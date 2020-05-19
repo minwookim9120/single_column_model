@@ -49,12 +49,14 @@ MODULE Mod_global
   INTEGER                               :: varid
   TYPE varinfo
     INTEGER                             :: varid
+    REAL                                :: dqv, dTemp
     REAL, DIMENSION(:),     ALLOCATABLE :: dz, next_dz,      &
                                            stag_dz, dt,      &
                                            sfc_dt, top_dt,   &
-                                           din, r, m, rb, mb, dmb, &
-                                           num, next_num, dmb_dt
-    REAL, DIMENSION(:,:),   ALLOCATABLE :: dout       
+                                           din, r, m, rb, mb, dm, &
+                                           num, &
+                                           dm_dt
+    REAL, DIMENSION(:,:),   ALLOCATABLE :: dout, next_num, next_m
     CHARACTER(LEN=256)                  :: vname, axis,      &
                                            desc, units
   END TYPE varinfo
@@ -114,14 +116,13 @@ MODULE Mod_global
     IF (.NOT. ALLOCATED(CFL%dz       )) ALLOCATE(CFL%dz            (nz))
 
     IF (.NOT. ALLOCATED(drop%num     )) ALLOCATE(drop%num (drop_column_num))
-    IF (.NOT. ALLOCATED(drop%next_num     )) ALLOCATE(drop%next_num (drop_column_num))
     IF (.NOT. ALLOCATED(drop%r       )) ALLOCATE(drop%r   (drop_column_num))
     IF (.NOT. ALLOCATED(drop%m       )) ALLOCATE(drop%m   (drop_column_num))
-    IF (.NOT. ALLOCATED(drop%dmb       )) ALLOCATE(drop%dmb   (drop_column_num))
+    IF (.NOT. ALLOCATED(drop%dm       )) ALLOCATE(drop%dm   (drop_column_num))
 
     IF (.NOT. ALLOCATED(drop%rb      )) ALLOCATE(drop%rb  (drop_column_num+1))
     IF (.NOT. ALLOCATED(drop%mb      )) ALLOCATE(drop%mb  (drop_column_num+1))
-    IF (.NOT. ALLOCATED(drop%dmb_dt      )) ALLOCATE(drop%dmb_dt  (drop_column_num+1))
+    IF (.NOT. ALLOCATED(drop%dm_dt      )) ALLOCATE(drop%dm_dt  (drop_column_num)) !! for reassign
 
   END SUBROUTINE Sub_allocate_dz
  
@@ -137,6 +138,8 @@ MODULE Mod_global
     IF (.NOT. ALLOCATED(q%dout       )) ALLOCATE(q%dout       (nz,nt+1))
 
     IF (.NOT. ALLOCATED(drop%dout    )) ALLOCATE(drop%dout (drop_column_num,nt))
+    IF (.NOT. ALLOCATED(drop%next_num     )) ALLOCATE(drop%next_num (nt,drop_column_num)) !! for reassign
+    IF (.NOT. ALLOCATED(drop%next_m     )) ALLOCATE(drop%next_m (nt, drop_column_num)) !! for reassign
 
   END SUBROUTINE Sub_allocate_dt
 
