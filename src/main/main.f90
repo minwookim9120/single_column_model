@@ -12,6 +12,7 @@ PROGRAM main_prog
   
   IMPLICIT NONE
 
+!== initialization
   CALL Sub_read_namelist
   CALL Sub_allocate_dz
   CALL Sub_set_grid
@@ -28,24 +29,16 @@ PROGRAM main_prog
                                       q%din, &
                             slat,      elat, &
                             slon,      elon   )
+  CALL Sub_read_NC_file( in_path, w_in_name, &
+                                      w%din, &
+                            slat,      elat, &
+                            slon,      elon   )
   CALL Sub_init_vars
 
-  IF (dyn_option .eq. 1) THEN
-    CALL Sub_Integration_FD
-  ELSE IF (dyn_option .eq. 2) THEN
-    CALL Sub_Integration_FV
-  ELSE IF (dyn_option .eq. 3) THEN
-    CALL Sub_Integration_PPM
-  ENDIF
+!== do time
+  CALL Sub_Integration_time
 
-  CALL Sub_drop_distributions (                    &
-                               dist_option,        &
-                               drop_column_num,    &
-                               drop_min_diameter,  &
-                               drop_max_diameter,  &
-                               drop%num(:,1)       &
-                              )
-
+!== write output
     ! open(unit = 20, file = "r.bin", status = "unknown", &
     !       form="unformatted",access="direct", recl=4*drop_column_num) 
     !

@@ -15,10 +15,7 @@ MODULE Mod_init_driver
     IMPLICIT NONE
 
       !! prescribed vertical-wind
-      w%dz(:)=0.5
-      CALL Sub_set_W ( nz , dz%dz , w%dz , w%stag_dz )
 
-      !!  
       IF ( incase == 2 ) THEN
         CALL Sub_ideal_init         &
             (                       &
@@ -31,30 +28,63 @@ MODULE Mod_init_driver
              (                                    &
               read_pres, read_psfc, read_temp,    &
               z%dz, input_nz, nz,                 &
-              q%din, temp%din, z%din,       &
-              q%dz,  temp%dz,  p%dz         &
+              q%din, temp%din, z%din,  w%din,     &
+              q%dz,  temp%dz,  p%dz,    w%dz      &
              )
       ENDIF
+      w%dz(:) = 1. 
+
+      CALL Sub_set_W ( nz , dz%dz , w%dz , w%stag_dz )
+
+      w%stag_dz(0) = 1. 
 
       !! computed dt considering CFL condition 
       CALL Sub_set_dt
-      ! dt=10
-      ! nt=720
+      nt=100
       CALL Sub_allocate_dt
-      !! surface condition
-      DO it = 1, nt
-        Temp%sfc_dt(it) = 10. + 273.5
-      ENDDO !! time do
-      !! top condition
-      DO it = 1, nt
-        Temp%top_dt(it) = Temp%dz(nz)
-      ENDDO !! time do
 
-      q%sfc_dt(:)=0.
-      q%top_dt(:)=0.
+      DO it = 1, nt   !! surface condition
+        Temp%sfc_dt(it) = 10. + 273.5
+           q%sfc_dt(it) = 0.
+      ENDDO
+      DO it = 1, nt   !! top condition
+        Temp%top_dt(it) = Temp%dz(nz)
+           q%top_dt(it) = 0.
+      ENDDO 
+
+      DO iz = 1, nz
+        CALL Sub_drop_distributions        &
+             (                             &
+              dist_option,                 &
+              drop_column_num,             &
+              drop_min_diameter,           &
+              drop_max_diameter,           &
+              drop%num(iz,:),              &
+              drop%r(iz,:), drop%rb(iz,:), & 
+              drop%m(iz,:), drop%mb(iz,:)  &
+             ) 
+      ENDDO
+
+      write(*,*) "!== checking initial distribution"
+      SELECT CASE(dist_option)
+        CASE(1)
+          ! Log-normal distribution
+          write(*,*) "gamma dist. in model (qc) =  ", sum(drop%m(1,:)*drop%num(1,:))
+          write(*,*) "gamma dist. const.   (qc) =  ", qc
+          write(*,*) "log-normal dist. in model (nc) =  ", sum(drop%num(1,:))
+          write(*,*) "log-normal dist. const.   (nc) =  ", nc
+          write(*,*) "accuracy  = ", (sum(drop%num(1,:))/nc) * 100., "%"
+        CASE(2)
+          ! Gamma distribution
+          write(*,*) "gamma dist. in model (qc) =  ", sum(drop%m(1,:)*drop%num(1,:))
+          write(*,*) "gamma dist. const.   (qc) =  ", qc
+          write(*,*) "gamma dist. in model (nc) =  ", sum(drop%num(1,:))
+          write(*,*) "gamma dist. const.   (nc) =  ", nc
+          write(*,*) "accuracy  = ", (sum(drop%num(1,:))/nc) * 100., "%"
+      END SELECT 
+      write(*,*) "!==!==!==!=="
 
     END SUBROUTINE Sub_init_vars
-
 
     !!---------------------------------------------!!
     !!  Cal. dt regared CFL condition              !!
@@ -69,7 +99,7 @@ MODULE Mod_init_driver
       ELSEWHERE
         CFL%dz = MAXVAL(CFL%dz)
       END WHERE
-      dt = INT(MINVAL(CFL%dz))
+      dt = REAL(INT(MINVAL(CFL%dz)))
       nt = INT(integrated_time/dt)
 
       IF ( nt*dt .ne. integrated_time ) then
@@ -138,7 +168,7 @@ MODULE Mod_init_driver
 
       ! Set Boundary Condition
       ! most likely w = 0 at these points
-      stag_w(1) = 0.5; stag_w(nz+1) = 0.     ! Homogeneous Dirichlet BC
+      stag_w(1) = 0.; stag_w(nz+1) = 0.     ! Homogeneous Dirichlet BC
 
     END SUBROUTINE Sub_set_W  
 

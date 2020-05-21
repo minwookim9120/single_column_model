@@ -1,5 +1,5 @@
 &Time_control
-  integrated_time = 7200        !! 
+  integrated_time = 3600        !! 
 /
 
 &var_info
@@ -20,14 +20,14 @@
   slat            = 189 
   elat            = 187 
 
-  nz              = 30          !! unit = number of vertical layer
+  nz              = 100          !! unit = number of vertical layer
   z_top           = 5000.0      !! unit = m
 /
 
 &Dyn_options
   gamma_dry       = 0.01        !! unit = K/m
 
-  dyn_option      = 2           !! 1 : Finite Diff., 2 : Finite volume, 3 : PPM
+  dyn_option      = 3           !! 1 : Finite Diff., 2 : Finite volume, 3 : PPM
 
   dz_option       = 2           !! 1 : arithmetic progression, dz=z_top/nz 
                                 !! 2 : geomatric sequence, dz(k)=dz(k-1)*dzr
@@ -41,6 +41,7 @@
   drop_column_num    = 100         !! nbin 
   drop_min_diameter  = 1.0e-6      !! unit = m
   drop_max_diameter  = 0.01        !! unit = m
+  redist_option      = 1           !! 1 : re-assignment, 2 : ppm
 /
 
 &file_info
@@ -49,7 +50,14 @@
   q_in_name   = "e5.mnth.mean.an.pl.128_133_q.regn320sc.2017010100_2017120100.nc"
   w_in_name   = "e5.mnth.mean.an.pl.128_135_w.regn320sc.2017010100_2017120100.nc"
   z_in_name   = "e5.mnth.mean.an.pl.128_129_z.regn320sc.2017010100_2017120100.nc"
-  output_path = "./"
-  !output_name = "output_ppm_arith.nc"
+  output_path = "./output"
+
   output_name = "output.nc"
+
+  !output_name = "output_fv_geo_real_w.nc"
+  !output_name = "output_ppm_geo_real_w.nc"
+
+  !output_name = "output_fv_geo_ideal_w.nc"
+  !output_name = "output_pp_geo_ideal_w.nc"
+  !output_name = "output.nc"
 /

@@ -3,7 +3,7 @@ MODULE Mod_global
   USE NETCDF
   IMPLICIT NONE
    
-  INTEGER :: it, iz, itt   !! do parameter
+  INTEGER :: it, iz   !! do parameter
 
     !! for namelist val
   INTEGER            :: integrated_time,    &
@@ -25,8 +25,7 @@ MODULE Mod_global
   INTEGER            :: dyn_option,         &
                         dz_option,          &
                         dist_option,        &
-                        drop_column_num,    &
-                        redist_option
+                        drop_column_num
 
   REAL               :: z_top,              &
                         drop_ratio,         &
@@ -46,45 +45,31 @@ MODULE Mod_global
                         output_name
 
     ! Declare variables 
-  REAL                                  :: dt, substep_dt
-  INTEGER                               :: nt     
-  INTEGER                               :: substep_nt
+  INTEGER                               :: nt, dt
   INTEGER                               :: varid
   TYPE varinfo
     INTEGER                             :: varid
-    REAL, DIMENSION(:),     ALLOCATABLE :: dz,            & ! vars in delta z                   (nz)  
-                                           next_dz,       & ! next vars in delta z              (nz)
-                                           stag_dz,       & ! stagged vars                      (nz + 1)
-                                           dt,            & ! vars in time array                (nt)
-                                           sfc_dt,        & ! boundary value in time array      (nt)
-                                           top_dt,        & ! boundary value in time array      (nt)
-                                           ref_m,         & ! ref. mass range for bin           (drop_column_num)
-                                           ref_mb,        & ! ref. boundary mass range for bin  (drop_column_num)
-                                           din              ! var from input data or prescribed (input_nz)
-    REAL, DIMENSION(:,:),   ALLOCATABLE :: dout,          & ! output                            (nz, nt)
-                                           r,             & ! drop radius                       (nz, drop_column_num)
-                                           m,             & ! drop mass                         (nz, drop_column_num)
-                                           rb,            & ! boundary drop radius              (nz, drop_column_num + 1)
-                                           mb,            & ! boundary drop mass                (nz, drop_column_num + 1)
-                                           num,           & ! bin array                         (nz, drop_column_num)
-                                           next_num,      & ! next var in bin array             (nz, drop_column_num)
-                                           dm_dt,         & ! dm/dt                             (nz, drop_column_num)
-                                           dmb,           & ! dmb                               (nz, drop_column_num)
-                                           dmb_dt           ! dmb/dt                            (nz, drop_column_num + 1)
-    REAL, DIMENSION(:,:,:), ALLOCATABLE :: drop_dout        ! output                            (nz, drop_column_num, nt)
-    CHARACTER(LEN=256)                  :: vname, axis,   &
+    REAL                                :: dqv, dTemp
+    REAL, DIMENSION(:),     ALLOCATABLE :: dz, next_dz,      &
+                                           stag_dz, dt,      &
+                                           sfc_dt, top_dt,   &
+                                           din, r, m, rb, mb, dm, &
+                                           num, &
+                                           dm_dt
+    REAL, DIMENSION(:,:),   ALLOCATABLE :: dout, next_num, next_m
+    CHARACTER(LEN=256)                  :: vname, axis,      &
                                            desc, units
   END TYPE varinfo
 
-  TYPE(varinfo) ::    Time,      & !! for nc write
-                      Temp,      & !! Temperature [K] 
+  TYPE(varinfo) ::    Temp,      & !! Temperature [K] 
                       th,        & !! Theta 
-                      q,         & !! Specific humidity
+                      q,         & !! Number of water droplets
                       w,         & !! Vertical velocity
                       dz,        & !! Difference z
-                      drop,      & !! droplet 
-                      p,         & !! pressure
-                      CFL,       & !! CFL
+                      time,      & !! Difference z
+                      drop,      & !! Difference z
+                      p,         & !! Difference z
+                      CFL,       & !! Difference z
                       z            !! Height 
 
     ! For nc file 
@@ -110,38 +95,34 @@ MODULE Mod_global
   !!-----------------------------!!
   SUBROUTINE Sub_allocate_dz
 
-    IF (.NOT. ALLOCATED(Temp%din      )) ALLOCATE(Temp%din    (input_nz))
-    IF (.NOT. ALLOCATED(Temp%dz       )) ALLOCATE(Temp%dz           (nz))
-    IF (.NOT. ALLOCATED(Temp%next_dz  )) ALLOCATE(Temp%next_dz      (nz))
+    IF (.NOT. ALLOCATED(Temp%din     )) ALLOCATE(Temp%din    (input_nz))
+    IF (.NOT. ALLOCATED(Temp%dz      )) ALLOCATE(Temp%dz           (nz))
+    IF (.NOT. ALLOCATED(Temp%next_dz )) ALLOCATE(Temp%next_dz      (nz))
 
-    IF (.NOT. ALLOCATED(q%din         )) ALLOCATE(q%din       (input_nz))
-    IF (.NOT. ALLOCATED(q%dz          )) ALLOCATE(q%dz              (nz))
-    IF (.NOT. ALLOCATED(q%next_dz     )) ALLOCATE(q%next_dz         (nz))
+    IF (.NOT. ALLOCATED(q%din        )) ALLOCATE(q%din       (input_nz))
+    IF (.NOT. ALLOCATED(q%dz         )) ALLOCATE(q%dz              (nz))
+    IF (.NOT. ALLOCATED(q%next_dz    )) ALLOCATE(q%next_dz         (nz))
 
-    IF (.NOT. ALLOCATED(w%din         )) ALLOCATE(w%din       (input_nz))
-    IF (.NOT. ALLOCATED(w%dz          )) ALLOCATE(w%dz              (nz))
-    IF (.NOT. ALLOCATED(w%stag_dz     )) ALLOCATE(w%stag_dz       (0:nz))
+    IF (.NOT. ALLOCATED(w%din        )) ALLOCATE(w%din       (input_nz))
+    IF (.NOT. ALLOCATED(w%dz         )) ALLOCATE(w%dz              (nz))
+    IF (.NOT. ALLOCATED(w%stag_dz    )) ALLOCATE(w%stag_dz       (0:nz))
 
-    IF (.NOT. ALLOCATED(z%din         )) ALLOCATE(z%din       (input_nz))
-    IF (.NOT. ALLOCATED(z%dz          )) ALLOCATE(z%dz              (nz))
+    IF (.NOT. ALLOCATED(z%din        )) ALLOCATE(z%din       (input_nz))
+    IF (.NOT. ALLOCATED(z%dz         )) ALLOCATE(z%dz              (nz))
 
-    IF (.NOT. ALLOCATED(dz%dz         )) ALLOCATE(dz%dz             (nz))
-    IF (.NOT. ALLOCATED(p%dz          )) ALLOCATE(p%dz              (nz))
+    IF (.NOT. ALLOCATED(dz%dz        )) ALLOCATE(dz%dz             (nz))
+    IF (.NOT. ALLOCATED(p%dz         )) ALLOCATE(p%dz              (nz))
 
-    IF (.NOT. ALLOCATED(CFL%dz        )) ALLOCATE(CFL%dz            (nz))
-    
-    IF (.NOT. ALLOCATED(drop%num      )) ALLOCATE(drop%num      (nz, drop_column_num))
-    IF (.NOT. ALLOCATED(drop%next_num )) ALLOCATE(drop%next_num (nz, drop_column_num))
-    IF (.NOT. ALLOCATED(drop%r        )) ALLOCATE(drop%r        (nz, drop_column_num))
-    IF (.NOT. ALLOCATED(drop%m        )) ALLOCATE(drop%m        (nz, drop_column_num))
-    IF (.NOT. ALLOCATED(drop%ref_m    )) ALLOCATE(drop%ref_m    (    drop_column_num))
-    IF (.NOT. ALLOCATED(drop%ref_mb   )) ALLOCATE(drop%ref_mb   (    drop_column_num))
-    IF (.NOT. ALLOCATED(drop%dm_dt    )) ALLOCATE(drop%dm_dt    (nz, drop_column_num))
+    IF (.NOT. ALLOCATED(CFL%dz       )) ALLOCATE(CFL%dz            (nz))
 
-    IF (.NOT. ALLOCATED(drop%rb       )) ALLOCATE(drop%rb      (nz, drop_column_num+1))
-    IF (.NOT. ALLOCATED(drop%mb       )) ALLOCATE(drop%mb      (nz, drop_column_num+1))
-    IF (.NOT. ALLOCATED(drop%dmb      )) ALLOCATE(drop%dmb     (nz, drop_column_num+1))
-    IF (.NOT. ALLOCATED(drop%dmb_dt   )) ALLOCATE(drop%dmb_dt  (nz, drop_column_num+1))
+    IF (.NOT. ALLOCATED(drop%num     )) ALLOCATE(drop%num (drop_column_num))
+    IF (.NOT. ALLOCATED(drop%r       )) ALLOCATE(drop%r   (drop_column_num))
+    IF (.NOT. ALLOCATED(drop%m       )) ALLOCATE(drop%m   (drop_column_num))
+    IF (.NOT. ALLOCATED(drop%dm       )) ALLOCATE(drop%dm   (drop_column_num))
+
+    IF (.NOT. ALLOCATED(drop%rb      )) ALLOCATE(drop%rb  (drop_column_num+1))
+    IF (.NOT. ALLOCATED(drop%mb      )) ALLOCATE(drop%mb  (drop_column_num+1))
+    IF (.NOT. ALLOCATED(drop%dm_dt      )) ALLOCATE(drop%dm_dt  (drop_column_num)) !! for reassign
 
   END SUBROUTINE Sub_allocate_dz
  
@@ -156,7 +137,9 @@ MODULE Mod_global
     IF (.NOT. ALLOCATED(q%top_dt     )) ALLOCATE(q%top_dt          (nt))
     IF (.NOT. ALLOCATED(q%dout       )) ALLOCATE(q%dout       (nz,nt+1))
 
-    IF (.NOT. ALLOCATED(drop%drop_dout )) ALLOCATE(drop%drop_dout (nz, drop_column_num,nt+1))
+    IF (.NOT. ALLOCATED(drop%dout    )) ALLOCATE(drop%dout (drop_column_num,nt))
+    IF (.NOT. ALLOCATED(drop%next_num     )) ALLOCATE(drop%next_num (nt,drop_column_num)) !! for reassign
+    IF (.NOT. ALLOCATED(drop%next_m     )) ALLOCATE(drop%next_m (nt, drop_column_num)) !! for reassign
 
   END SUBROUTINE Sub_allocate_dt
 

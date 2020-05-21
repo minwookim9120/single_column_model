@@ -5,6 +5,71 @@ MODULE Mod_dyn_driver
 
   CONTAINS
 
+  SUBROUTINE Sub_dyn_driver
+    IF (dyn_option .eq. 1) THEN
+      CALL Sub_Finite_diff             &
+           (                           &
+            temp%dz, temp%sfc_dt(it),  &
+            temp%top_dt(it),           &
+            dz%dz, nz,                 &
+            dt,                        &
+            w%stag_dz,                 &
+            temp%next_dz               &
+           )
+
+      CALL Sub_Finite_diff             &
+           (                           &
+            q%dz, q%sfc_dt(it),        &
+            q%top_dt(it),              &
+            dz%dz, nz,                 &
+            dt,                        &
+            w%stag_dz,                 &
+            q%next_dz                  &
+           )
+
+    ELSE IF (dyn_option .eq. 2) THEN
+      CALL Sub_Finite_volume           &
+           (                           &
+            temp%dz, temp%sfc_dt(it),  &
+            temp%top_dt(it),           &
+            dz%dz, nz, CFL%dz,         &
+            dt,                        &
+            w%stag_dz,                 &
+            temp%next_dz               &
+           )
+  
+      CALL Sub_Finite_volume           &
+           (                           &
+            q%dz, q%sfc_dt(it),        &
+            q%top_dt(it),              &
+            dz%dz, nz, CFL%dz,         &
+            dt,                        &
+            w%stag_dz,                 &
+            q%next_dz                  &
+           )
+    ELSE IF (dyn_option .eq. 3) THEN
+      CALL Sub_Finite_volume_PPM      &
+           (                          &
+            temp%dz, temp%sfc_dt(it), &                     
+            temp%top_dt(it),          &                     
+            dz%dz, nz, CFL%dz,        &                 
+            dt,                       &
+            w%stag_dz,                &                     
+            temp%next_dz              &                     
+           )                      
+
+      CALL Sub_Finite_volume_PPM      &  
+           (                          & 
+            q%dz, q%sfc_dt(it),       &    
+            q%top_dt(it),             &       
+            dz%dz, nz, CFL%dz,        &                      
+            dt,                       &                      
+            w%stag_dz,                &                      
+            q%next_dz                 &                      
+           )                       
+    ENDIF
+  END SUBROUTINE Sub_dyn_driver
+
   SUBROUTINE Sub_Finite_diff      &
              (                    &
                var, sfc_var,      &
@@ -17,7 +82,7 @@ MODULE Mod_dyn_driver
 
     IMPLICIT NONE
     ! IN
-    INTEGER,                    INTENT(IN)    :: dt
+    REAL,                       INTENT(IN)    :: dt
     INTEGER,                    INTENT(IN)    :: nz
     REAL,                       INTENT(IN)    :: sfc_var
     REAL,                       INTENT(IN)    :: top_var
@@ -69,7 +134,7 @@ MODULE Mod_dyn_driver
 
     IMPLICIT NONE
     ! IN
-    INTEGER,                    INTENT(IN)    :: dt
+    REAL,                       INTENT(IN)    :: dt
     INTEGER,                    INTENT(IN)    :: nz
     REAL,                       INTENT(IN)    :: sfc_var
     REAL,                       INTENT(IN)    :: top_var
@@ -90,10 +155,13 @@ MODULE Mod_dyn_driver
     ! Do outflow B.C
     CALL Sub_cal_slope ( var, dz, nz, slp )
 
+    ! flux(1)    = 0.
+    ! flux(nz+1) = 0.
+
     c   = dt*w(1)/dz(1)
-    !rst = (var(1) + 0.5*slp(1)*(1.-c)) / dz(1) 
+    rst = (var(1) + 0.5*slp(1)*(1.-c)) / dz(1) 
     rst = (sfc_var + 0.5*slp(1)*(1.-c)) / dz(1)
-    flux(1) = w(1)*rst*0.5
+    flux(1) = w(1)*rst
 
     c   = dt*w(nz+1)/dz(nz)
     rst = (top_var + 0.5*slp(nz)*(1.-c)) / dz(nz) 
@@ -136,7 +204,7 @@ MODULE Mod_dyn_driver
 
 
     INTEGER,                    INTENT(IN) :: nz
-    INTEGER,                    INTENT(IN) :: dt
+    REAL,                       INTENT(IN) :: dt
     REAL,    DIMENSION(:),      INTENT(IN) :: dz, var
     REAL,    DIMENSION(1:nz+1), INTENT(IN) :: w
     REAL,    DIMENSION(nz),     INTENT(IN) :: CFL                                   
@@ -205,17 +273,19 @@ MODULE Mod_dyn_driver
     ! flux(ke+1) = w(ke+1)*var(ke)
 
     ! B.C = 0. 
-    flux(ks)   = 0. 
-    flux(ke+1) = 0. 
+    ! flux(ks)   = 0. 
+    ! flux(ke+1) = 0. 
 
-   c   = dt*w(1)/dz(1)
-   !rst = (var(1) + 0.5*slp(1)*(1.-c)) / dz(1) 
-   rst = (sfc_var + 0.5*slp(1)*(1.-c)) / dz(1)
-   flux(1) = w(1)*rst
+     c   = dt*w(1)/dz(1)
+     rst = (var(1) + 0.5*slp(1)*(1.-c)) / dz(1) 
+     rst = (sfc_var + 0.5*slp(1)*(1.-c)) / dz(1)
+     flux(1) = w(1)*rst
+     rst = (top_var + 0.5*slp(nz)*(1.-c)) / dz(nz)
+     flux(ke+1) = w(ke+1)*rst
 
     ! Cal. flux
     tt = 2./3.
-    DO k = 2, nz+1
+    DO k = 1, nz+1
       IF (w(k) >= 0.) THEN
         IF (k == ks) CYCLE ! inflow
         cn = dt*w(k)/dz(k-1)
@@ -280,12 +350,10 @@ MODULE Mod_dyn_driver
       dvar        = - (flux(i+1) - flux(i))
       ! dvar        = - (flux(i+1)/dz(i+1) - flux(i)/dz(i))
       next_var(i) = var(i) + dvar * dt
-      ! IF ( next_var(i) .lt. 0. ) THEN !! mass conservation filter
-      !   CALL FAIL_MSG("ERROR :: dynamics, Physical quantity cannot be negative")
-      ! ENDIF
+      IF ( next_var(i) .lt. 0. ) THEN !! mass conservation filter
+        CALL FAIL_MSG("ERROR :: dynamics, Physical quantity cannot be negative")
+      ENDIF
     END DO
-  write(*,*) "flux======================="
-    write(*,*) flux
 
   END SUBROUTINE Sub_Finite_volume_PPM
 
@@ -303,7 +371,6 @@ MODULE Mod_dyn_driver
 
     limiters = .true.
     dolinear = .false.
-
      
     ! compute slope (weighted for unequal levels)
     DO k = 2, nz

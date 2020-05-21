@@ -25,7 +25,6 @@ MODULE Mod_read
                           z_top
 
   NAMELIST /Dyn_options/ gamma_dry,     &
-
                          dyn_option,    &
                          dz_option,     &
                          dzr
@@ -33,7 +32,8 @@ MODULE Mod_read
   NAMELIST /Phys_options/ dist_option,       &
                           drop_column_num,   &
                           drop_min_diameter, &
-                          drop_max_diameter
+                          drop_max_diameter, &
+                          redist_option 
 
   NAMELIST /file_info/ in_path,     &
                        t_in_name,   &

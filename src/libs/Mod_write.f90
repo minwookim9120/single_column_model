@@ -79,7 +79,7 @@
         CALL CHECK( nf90_put_att(ncid, 5,  un, w%units) )
 
         ! Define "T" and its attributes 
-        CALL CHECK( nf90_def_var(ncid, temp%vname, nf90_float, dimid4, varid=varid) )
+        CALL CHECK( nf90_def_var(ncid, temp%vname, nf90_double, dimid4, varid=varid) )
         CALL CHECK( nf90_put_att(ncid, 6, des,   temp%desc) )
         CALL CHECK( nf90_put_att(ncid, 6,  un,  temp%units) )
 

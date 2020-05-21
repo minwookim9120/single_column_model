@@ -13,8 +13,8 @@ MODULE Mod_realcase
                (                                    &
                 read_pres, read_psfc, read_temp,    &
                 z, input_nz, nz,                    &
-                qv_in,  temp_in, vert_in,      &
-                qv_out, temp_out,  p_out       &
+                qv_in,  temp_in, vert_in, w_in,     &
+                qv_out, temp_out,  p_out, w_out       &
                )
 
     USE Mod_const, only: Ps, Rd, g, Cp
@@ -26,9 +26,11 @@ MODULE Mod_realcase
     REAL, DIMENSION(input_nz), INTENT(IN)  ::     qv_in,          &  !! [kg/kg]
                                                 temp_in,          &  !! [K]
                                                 vert_in              !! P [hPa] or Z [m]
+    REAL, DIMENSION(input_nz), INTENT(IN)  ::      w_in
     REAL, DIMENSION(nz),       INTENT(IN)  ::         z              !! [kg/kg]
     ! Out
     REAL, DIMENSION(nz),        INTENT(OUT) :: p_out, temp_out, qv_out
+    REAL, DIMENSION(nz),        INTENT(OUT) :: w_out
     ! Local
     REAL, DIMENSION(input_nz) :: z_in, p_in, t_in, th_in,        &
                                    Tv,                           &  !! [K], virtual temperature
@@ -77,13 +79,13 @@ MODULE Mod_realcase
         temp_out(i) = (1.0D+00 - t)*t_in(1)  + t*t_in(2)
            p_out(i) = (1.0D+00 - t)*p_in(1)  + t*p_in(2)
           qv_out(i) = (1.0D+00 - t)*qv_in(1) + t*qv_in(2)
-           ! w_out(i) = (1.0D+00 - t)*w_in(1)  + t*w_in(2)
+           w_out(i) = (1.0D+00 - t)*w_in(1)  + t*w_in(2)
       else if ( z_in(input_nz) <= z(i) ) then
         t = ( z(i) - z_in(input_nz-1) ) / (z_in(input_nz) - z_in(input_nz-1))
         temp_out(i) = (1.0D+00 - t)*t_in(input_nz-1)  + t*t_in(input_nz)
            p_out(i) = (1.0D+00 - t)*p_in(input_nz-1)  + t*p_in(input_nz)
           qv_out(i) = (1.0D+00 - t)*qv_in(input_nz-1) + t*qv_in(input_nz)
-           ! w_out(i) = (1.0D+00 - t)*w_in(input_nz-1)  + t*w_in(input_nz)
+           w_out(i) = (1.0D+00 - t)*w_in(input_nz-1)  + t*w_in(input_nz)
       else
         do k = 2, input_nz
 
@@ -92,7 +94,7 @@ MODULE Mod_realcase
             temp_out(i) = (1.0D+00 - t)*t_in(k-1)  + t*t_in(k)
                p_out(i) = (1.0D+00 - t)*p_in(k-1)  + t*p_in(k)
               qv_out(i) = (1.0D+00 - t)*qv_in(k-1) + t*qv_in(k)
-               ! w_out(i) = (1.0D+00 - t)*w_in(k-1) + t*w_in(k)
+               w_out(i) = (1.0D+00 - t)*w_in(k-1) + t*w_in(k)
             exit
           end if
 
@@ -100,21 +102,6 @@ MODULE Mod_realcase
       end if
 
     end do 
-
-   open(unit =99, file ='t_check_interp.bin', status = "unknown", &
-         access='direct', recl=4*input_nz)
-      ! do i = 1, input_nz
-      ! write(99,rec=i) t_in(i)
-      ! enddo
-      write(99,rec=1) t_in
-      ! write(99,rec=2) qv_in
-
-  write(*,*) qv_in
-  write(*,*) "=="
-  write(*,*) qv_out
-  write(*,*) "=="
-
-  stop
 
 
     END SUBROUTINE Sub_real_init 
