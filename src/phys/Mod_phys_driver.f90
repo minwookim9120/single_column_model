@@ -12,11 +12,11 @@ MODULE Mod_phys_driver
 
   IMPLICIT NONE
 
-    write(*,*) "==============================================================="
-    write(*,*) "for checking conservation after condensation and redistribution"
-    write(*,*) " before "
-    write(*,*) " num of bot layer at 1st time  =", sum(drop%num(1,:))
-    write(*,*) " num of top layer at 1st time  =", sum(drop%num(100,:))
+    ! write(*,*) "==============================================================="
+    ! write(*,*) "for checking conservation after condensation and redistribution"
+    ! write(*,*) " before "
+    ! write(*,*) " num of bot layer at 1st time  =", sum(drop%num(1,:))
+    ! write(*,*) " num of top layer at 1st time  =", sum(drop%num(100,:))
     DO iz = 1, nz
 
       ! condensation and evaporation
@@ -49,10 +49,10 @@ MODULE Mod_phys_driver
       ! CALL compute_collision
     ENDDO
     ! write(*,*) drop%num(5,:)
-    write(*,*) " after "
-    write(*,*) " num of bot layer at 1st time  =", sum(drop%num(1,:))
-    write(*,*) " num of top layer at 1st time  =", sum(drop%num(100,:))
-    write(*,*) "==============================================================="
+    ! write(*,*) " after "
+    ! write(*,*) " num of bot layer at 1st time  =", sum(drop%num(1,:))
+    ! write(*,*) " num of top layer at 1st time  =", sum(drop%num(100,:))
+    ! write(*,*) "==============================================================="
 
   END SUBROUTINE Sub_phys_driver
 
