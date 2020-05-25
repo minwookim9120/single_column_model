@@ -97,17 +97,17 @@ MODULE Mod_drop_growth
 
       !---------------------------- parameter list -----------------------------
       T0      = 293.15                 ! [ K ] , 20C
-      l0      = 6.62 * (10.**(1./6.))    ! [ cm ]
+      l0      = 6.62 * ((1./10.)**(6.))    ! [ cm ]
       p0      = 1013.25                ! [ hPa = mb ] , standard sea level pressure   
       rhov    = p * 100. / ( Rd * T )  ! [ kg * m^-3  ] , density of air
       drho    = rho - rhov             ! [ kg * m^-3  ] , 
                                        ! difference between fluid density of drop and air
 
-      eta0    = 1.818 * (10**(1./4.))     ! [  g * cm^-1 * s^-1 ] , at 20C 
+      eta0    = 1.818 * ((1./10.)**(4.))     ! [  g * cm^-1 * s^-1 ] , at 20C 
       eta0    = eta0*0.1               ! [ kg * m^-1 * s^-1  ]
 
       ! dynamic viscosity, A short course in cloudphysics 3rd, 102 page
-      eta     = 1.72 * (10**(1./5.)) * ( 393 / ( T + 120) ) * (( T / 273 )**(3./2.))
+      eta     = 1.72 * ((1./10)**(5.)) * ( 393 / ( T + 120) ) * (( T / 273 )**(3./2.))
 
       ! [ cm ] mean free path of air molcules
       l        = l0 * ( eta / eta0 ) * ( p0 / p ) * (( T / T0 )**(1/2))
@@ -248,8 +248,17 @@ MODULE Mod_drop_growth
       Vt = 0.
       DO irr = 1, size(r)
         call terminal_velocity(T, P, r(irr), Vt(irr))   ! Beard (1976)
-      ! write(*,*) Vt(irr), r(irr) 
       END DO
+
+      write(*,*) vt
+      write(*,*) "==========" 
+      write(*,*) r 
+      ! open(unit = 111, file = 'test.txt', status = "unknown", &
+      !       access="direct", form="unformatted", recl=100*4) 
+      !
+      ! write(unit = 111, rec=1) vt
+      ! write(unit = 111, rec=2) r
+
 
       stop
       ! dynamic viscosity of air (See Yau (1996) 102-103p)
