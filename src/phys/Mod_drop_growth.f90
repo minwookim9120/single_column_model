@@ -266,6 +266,7 @@ MODULE Mod_drop_growth
       !       access="direct", form="unformatted", recl=100*4) 
       !
       ! write(unit = 111, rec=1) vt
+      ! write(unit = 111, rec=2) r
       !
       ! stop
       ! dynamic viscosity of air (See Yau (1996) 102-103p)
