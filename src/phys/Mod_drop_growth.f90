@@ -27,30 +27,24 @@ MODULE Mod_drop_growth
       REAL, DIMENSION(drop_column_num+1) :: Vfb
       ! Out
       REAL, DIMENSION(drop_column_num), INTENT(OUT) :: dm_dt
-      REAL, DIMENSION(drop_column_num), INTENT(OUT) :: dmb_dt
+      REAL, DIMENSION(drop_column_num+1), INTENT(OUT) :: dmb_dt !! 2020.05.26 "add +1" by han
 
       CALL es_Fk_Fd(temp,pres,es,Fk,Fd) 
       
       e     = pres * qv/0.622      ! vapor pressure       [hPa]
       RH    = (e/es)*100.          ! Relative humidity    [%]
 
-      S     = 0.01                 ! For test
+      !S     = 0.01                 ! For test
+      S     = -0.01                 ! For test
 
       Vf = 1.; Vfb = 1.
+ 
+    
       IF (ventilation_effect) THEN
         call ventilation(temp, Pres, r, Vf)
         call ventilation(temp, Pres, rb, Vfb)
       END IF
 
-      ! write(*,*) "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***"
-      ! write(*,*) "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***"
-      !  write(*,*) temp, pres, r 
-      ! write(*,*) shape(Vf)
-      ! write(*,*) Vf
-      ! write(*,*) "xxx " 
-      ! write(*,*) shape(Vfb)
-      ! write(*,*) Vfb
-      ! stop
 
       dm_dt  = 4*Pi*r*(1./(Fd+Fk))*S*Vf
       dmb_dt = 4*Pi*rb*(1./(Fd+Fk))*S*Vfb
@@ -385,6 +379,8 @@ MODULE Mod_drop_growth
       ! Out
       REAL, DIMENSION(drop_column_num), INTENT(OUT) :: next_nr
 
+      next_nr = 0.
+
        DO inext_m = 1, drop_column_num
          DO im = 1, drop_column_num-1
 
@@ -397,17 +393,17 @@ MODULE Mod_drop_growth
             x  = (NM - (ref_m(im+1) * N)) / (ref_m(im)-ref_m(im+1))
             y  = N - x 
 
-            ! next_nr(im) = nr(im) + x
-            ! next_nr(im+1) = nr(im+1) + y
-            next_nr(im) = x
-            next_nr(im+1) = y
+             next_nr(im) = next_nr(im) + x !! modified by han
+             next_nr(im+1) = next_nr(im+1) + y !! modified by han
+
           ENDIF
 
          ENDDO
        ENDDO
-        ! write(*,*) sum(nr)
-        ! write(*,*) sum(next_nr)
-        ! stop
+
+        !print*, next_nr
+        write(*,*) sum(nr)
+        write(*,*) sum(next_nr)
 
     END SUBROUTINE reassign!}}}
 END MODULE Mod_drop_growth 
