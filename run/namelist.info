@@ -41,7 +41,7 @@
   drop_column_num    = 100         !! nbin 
   drop_min_diameter  = 1.0e-6      !! unit = m
   drop_max_diameter  = 0.01        !! unit = m
-  redist_option      = 2           !! 1 : re-assignment, 2 : ppm
+  redist_option      = 1           !! 1 : re-assignment, 2 : ppm
   ventilation_effect = .ture.      !! 
 /
 
@@ -55,7 +55,8 @@
 
   output_path = "./output"
 
-  output_name = "output.nc"
+  output_name  = "output.nc"
+  drop_name    = "drop.nc"
 
   !output_name = "output_fv_geo_real_w.nc"
   !output_name = "output_ppm_geo_real_w.nc"

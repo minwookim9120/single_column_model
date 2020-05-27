@@ -37,11 +37,17 @@ PROGRAM main_prog
   !   z%dz(it) = real(it)
   ! enddo
 
+
   CALL Sub_write_netcdf ( nz, nt, dz%dz, z%dz,      &
                           temp%dout, q%dout,        &
                           w%dz(1:nz),               &
                           output_path, output_name )     
 
+  CALL Sub_write_netcdf_drop ( nz, nt, z%dz,                        &
+                               drop_column_num, drop%r_dout(:,1,1), &
+                               drop%mass_dout, drop%drop_dout,      &
+                               drop%r_dout,                         &
+                               output_path, drop_name )    
 
   ! CALL Sub_deallocate 
 

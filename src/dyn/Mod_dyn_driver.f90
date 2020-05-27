@@ -345,13 +345,13 @@ MODULE Mod_dyn_driver
       flux(k) = w(k)*rst
     ENDDO
 
-    flux(ke+1) = 0. 
     ! Cal. FV
     DO i = 1, nz
       dvar        = - (flux(i+1) - flux(i))/dz(i)
       ! dvar        = - (flux(i+1)/dz(i+1) - flux(i)/dz(i))
       next_var(i) = var(i) + dvar * dt
       ! IF ( next_var(i) .lt. 0. ) THEN !! mass conservation filter
+      !   print*, next_var(i), var(i), dvar, dt
       !   CALL FAIL_MSG("ERROR :: dynamics, Physical quantity cannot be negative")
       ! ENDIF
     END DO

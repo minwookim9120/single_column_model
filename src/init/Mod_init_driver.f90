@@ -149,6 +149,7 @@ MODULE Mod_init_driver
         CFL%dz = MAXVAL(CFL%dz)
       END WHERE
       dt = REAL(INT(MINVAL(CFL%dz)))
+      dt = 1. 
       nt = INT(integrated_time/dt)
 
       IF ( nt*dt .ne. integrated_time ) then

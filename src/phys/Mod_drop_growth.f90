@@ -387,6 +387,7 @@ MODULE Mod_drop_growth
       REAL, DIMENSION(drop_column_num)                :: CFL_substep,  &
                                                          local_nr,     &
                                                          dm
+      REAL, DIMENSION(drop_column_num+1)              :: ddmb_dt
       INTEGER                                         :: izz
       ! Out
       REAL, DIMENSION(drop_column_num),   INTENT(OUT) :: next_nr      
@@ -405,11 +406,12 @@ MODULE Mod_drop_growth
             CFL_substep = MAXVAL(CFL_substep)
           END WHERE
           substep_dt = MINVAL(CFL_substep)      ; IF (substep_dt == 0) substep_dt = 1
-          substep_dt = 0.02                      ; IF (substep_dt == 0) substep_dt = 0.01
+          substep_dt = 0.01                     ; IF (substep_dt == 0) substep_dt = 0.01
           substep_nt = INT(dt/substep_dt)       ; IF (substep_nt == 0) substep_nt = 1
-
         
           local_nr = nr
+          ddmb_dt = dmb_dt
+          ! ddmb_dt(drop_column_num+1) = 0.
           IF ( dt >= substep_dt ) THEN
             DO itt = 1, substep_nt
               CALL Sub_Finite_volume_PPM ( local_nr, 0.,                      &
@@ -426,6 +428,7 @@ MODULE Mod_drop_growth
                   ! write(*,*) "dmb_dt =", dmb_dt
                   ! write(*,*) "nr =", nr
                   ! write(*,*) "nr =", sum(nr)
+              local_nr=next_nr
             ENDDO
           ELSE
             CALL Sub_Finite_volume_PPM ( nr, 0.,                            &

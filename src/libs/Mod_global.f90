@@ -44,6 +44,7 @@ MODULE Mod_global
                           z_in_name, &
                          input_name, &
                         output_path, &
+                          drop_name, &
                         output_name
 
  LOGICAL             :: ventilation_effect
@@ -68,6 +69,7 @@ MODULE Mod_global
                                            top_dt,        & ! boundary value in time array      (nt)
                                            ref_m,         & ! ref. mass range for bin           (drop_column_num)
                                            ref_mb,        & ! ref. boundary mass range for bin  (drop_column_num)
+                                           ref_num,       & ! ref. number conc. for bin         (drop_column_num)
                                            din              ! var from input data or prescribed (input_nz)
     REAL, DIMENSION(:,:),   ALLOCATABLE :: dout,          & ! output                            (nz, nt)
                                            r,             & ! drop radius                       (nz, drop_column_num)
@@ -79,7 +81,9 @@ MODULE Mod_global
                                            dm_dt,         & ! dm/dt                             (nz, drop_column_num)
                                            dmb,           & ! dmb                               (nz, drop_column_num)
                                            dmb_dt           ! dmb/dt                            (nz, drop_column_num + 1)
-    REAL, DIMENSION(:,:,:), ALLOCATABLE :: drop_dout        ! output                            (nz, drop_column_num, nt)
+    REAL, DIMENSION(:,:,:), ALLOCATABLE :: drop_dout,     & ! output                            (nz, drop_column_num, nt) 
+                                           mass_dout,     &
+                                              r_dout
     CHARACTER(LEN=256)                  :: vname, axis,   &
                                            desc, units
   END TYPE varinfo
@@ -140,6 +144,8 @@ MODULE Mod_global
     
     IF (.NOT. ALLOCATED(drop%num      )) ALLOCATE(drop%num      (nz, drop_column_num))
     IF (.NOT. ALLOCATED(drop%next_num )) ALLOCATE(drop%next_num (nz, drop_column_num))
+    IF (.NOT. ALLOCATED(drop%ref_num  )) ALLOCATE(drop%ref_num  (    drop_column_num))
+
     IF (.NOT. ALLOCATED(drop%r        )) ALLOCATE(drop%r        (nz, drop_column_num))
     IF (.NOT. ALLOCATED(drop%m        )) ALLOCATE(drop%m        (nz, drop_column_num))
     IF (.NOT. ALLOCATED(drop%ref_m    )) ALLOCATE(drop%ref_m    (    drop_column_num))
@@ -164,7 +170,9 @@ MODULE Mod_global
     IF (.NOT. ALLOCATED(q%top_dt     )) ALLOCATE(q%top_dt          (nt))
     IF (.NOT. ALLOCATED(q%dout       )) ALLOCATE(q%dout       (nz,nt+1))
 
-    IF (.NOT. ALLOCATED(drop%drop_dout )) ALLOCATE(drop%drop_dout (nz, drop_column_num,nt+1))
+    IF (.NOT. ALLOCATED(drop%drop_dout )) ALLOCATE(drop%drop_dout (drop_column_num,nz,nt+1))
+    IF (.NOT. ALLOCATED(drop%mass_dout )) ALLOCATE(drop%mass_dout (drop_column_num,nz,nt+1))
+    IF (.NOT. ALLOCATED(drop%r_dout    )) ALLOCATE(drop%r_dout    (drop_column_num,nz,nt+1))
 
   END SUBROUTINE Sub_allocate_dt
 
@@ -206,7 +214,6 @@ MODULE Mod_global
     w%vname        = "W"
     z%vname        = "Lev"
     time%vname     = "Time"
-
 
     ! Set "Description" attributes.
     Temp%desc      = "Temperature"
