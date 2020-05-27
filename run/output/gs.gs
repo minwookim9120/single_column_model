@@ -31,11 +31,10 @@ if ( taxis = off )
 st=sublin(result,5);last=subwrd(st,9)
 t=1
 while(t<=last)
-'c'
 'set t 't
 say t
 'set z 1 100'
-* 'set vrange 250 300'
+'set vrange 250 300'
 * 'set vrange -1e+1 1e+1'
 * 'set vrange -3 3'   
 tt=t+1 
@@ -46,7 +45,7 @@ tt=t+1
 * '!rm -f x.png'
 
 
-t=t+1
+t=t+100
 endwhile
 
 
