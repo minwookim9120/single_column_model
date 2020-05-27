@@ -2,6 +2,7 @@ MODULE Mod_init_driver
 
   USE Mod_global
   USE Mod_const
+  USE Mod_read 
   USE Mod_idealcase
   USE Mod_realcase
   USE Mod_distribution 
@@ -24,28 +25,77 @@ MODULE Mod_init_driver
              temp%dz, q%dz          &
             )  
       ELSE IF ( incase == 1 ) THEN
+        CALL Sub_read_NC_file( in_path, z_in_name, &
+                                            z%din, &
+                                  slat,      elat, &
+                                  slon,      elon   )
+        CALL Sub_read_NC_file( in_path, t_in_name, &
+                                         temp%din, &
+                                  slat,      elat, &
+                                  slon,      elon   )
+        CALL Sub_read_NC_file( in_path, q_in_name, &
+                                            q%din, &
+                                  slat,      elat, &
+                                  slon,      elon   )
+        CALL Sub_read_NC_file( in_path, w_in_name, &
+                                            w%din, &
+                                  slat,      elat, &
+                                  slon,      elon   )
+
+
         CALL Sub_real_init                        &
              (                                    &
               read_pres, read_psfc, read_temp,    &
-              z%dz, input_nz, nz,                 &
+              z%dz, input_nz, nz, Ps,             &
+              q%din, temp%din, z%din,  w%din,     &
+              q%dz,  temp%dz,  p%dz,    w%dz      &
+             )
+      ELSE IF ( incase == 3 ) THEN
+        CALL Sub_read_txt_file                &
+             (                                &
+              in_path, input_name,             &
+              input_nz,                        &
+              sfc_p, sfc_t, sfc_q,             &
+              z%din, temp%din, q%din           &
+             )
+
+        IF (ALLOCATED(w%din)) DEALLOCATE(w%din)
+        ALLOCATE(w%din(input_nz))
+        w%din = 0.
+
+        CALL Sub_real_init                        &
+             (                                    &
+              read_pres, read_psfc, read_temp,    &
+              z%dz, input_nz, nz, sfc_p,          &
               q%din, temp%din, z%din,  w%din,     &
               q%dz,  temp%dz,  p%dz,    w%dz      &
              )
       ENDIF
-      w%dz(:) = 1. 
+      w%dz(:) = 0.2
+
+      ! open(unit = 111, file = 'r.bin', status = "unknown", &
+      !       access="direct", form="unformatted", recl=100*4) 
+      ! write(unit = 111, rec=1) temp%dz
+      ! write(*,*) "qwerqwerqwerqwerqwerqwer"
+      !
+      ! stop
 
       CALL Sub_set_W ( nz , dz%dz , w%dz , w%stag_dz )
 
-      w%stag_dz(0) = 1. 
+      w%stag_dz(0) = 0.5
+      w%stag_dz(:) = 0.2
 
       !! computed dt considering CFL condition 
       CALL Sub_set_dt
       CALL Sub_allocate_dt
+      IF (incase == 1 .OR. incase == 2) THEN
+        Temp%sfc_dt(:) = 10. + 273.5
+           q%sfc_dt(:) = 0.
+      ELSE IF (incase == 3) THEN
+        Temp%sfc_dt(:) = sfc_t
+           q%sfc_dt(:) = sfc_q
+      ENDIF
 
-      DO it = 1, nt   !! surface condition
-        Temp%sfc_dt(it) = 10. + 273.5
-           q%sfc_dt(it) = 0.
-      ENDDO
       DO it = 1, nt   !! top condition
         Temp%top_dt(it) = Temp%dz(nz)
            q%top_dt(it) = 0.

@@ -21,9 +21,10 @@ MODULE Mod_integration
       ! q%dout        = 0.
 
       ! defirne output 1st time variables.
-      ! temp%dout(:,1)=temp%dz(:)
-      temp%dout(:,1) = drop%num(50,:)
-         q%dout(:,1) = q%dz(:)
+      temp%dout(:,1)        = temp%dz(:)
+      q%dout(:,1)           = q%dz(:)
+      drop%drop_dout(:,:,1) = drop%num(:,:)
+      ! ref_m
       drop%ref_m     = drop%m(1,:) 
       drop%ref_mb    = drop%mb(1,:)
 
@@ -47,19 +48,18 @@ MODULE Mod_integration
 
         ! write(*,*) 'it times = ', it
         ! CALL SUCCESS_MSG("phys success") 
-        ! write(*,*) 'check drop. =', drop%num(50,:) 
+        ! write(*,*) 'check drop. =', sum(drop%num(1,:))
 
         ! write(*,*) it
         ! write(*,*) drop%num(1,:)
-        ! update temp. and q by dyn.
         temp%dz = temp%next_dz
         q%dz    = q%next_dz
 
         ! save output vars
         ! test temp.
-        ! temp%dout(:,it+1)=temp%next_dz(:)
-        temp%dout(:,it+1)=drop%next_num(50,:)
-        q%dout(:,it+1)=q%next_dz(:)
+        temp%dout(:,it+1)         = temp%dz(:)
+        q%dout(:,it+1)            = q%dz(:)
+        drop%drop_dout(:,:,it+1)  = drop%num(:,:)
       ENDDO !! time do
 
     END SUBROUTINE Sub_Integration_time

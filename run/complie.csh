@@ -8,6 +8,7 @@ set blddir=../src/bld
 rm -f ${blddir}/*.o ${blddir}/*.mod 
 rm -f ${srcdir}/output/output.nc main.exe 
 
+# ifort  ${srcdir}/libs/Mod_global.f90          \
 ifort -r8 ${srcdir}/libs/Mod_global.f90          \
           ${srcdir}/libs/Mod_const.f90           \
           ${srcdir}/libs/Mod_read.f90            \

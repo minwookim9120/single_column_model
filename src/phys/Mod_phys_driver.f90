@@ -18,7 +18,9 @@ MODULE Mod_phys_driver
     ! write(*,*) " before "
     ! write(*,*) " num of bot layer at 1st time  =", sum(drop%num(1,:))
     ! write(*,*) " num of top layer at 1st time  =", sum(drop%num(100,:))
-    DO iz = 1, nz
+    !
+    !DO iz = 1, nz
+    DO iz = 1, nz 
 
       ! condensation and evaporation
       CALL compute_dmb_dt                       &
@@ -30,6 +32,7 @@ MODULE Mod_phys_driver
 
       drop%m(iz,:)  = drop%m(iz,:)  + drop%dm_dt(iz,:)*dt
       drop%mb(iz,:) = drop%mb(iz,:) + drop%dmb_dt(iz,:)*dt
+
 
       DO i_m = 1, SIZE(drop%mb(iz,:)) 
         IF (drop%mb(iz,i_m) < 0.) drop%mb(iz,i_m) = 0
@@ -59,9 +62,12 @@ MODULE Mod_phys_driver
       ! CALL compute_collision
     ENDDO
     ! write(*,*) " after "
+    ! write(*,*) drop%dm_dt(1,:)
+
     ! write(*,*) " num of bot layer at 1st time  =", sum(drop%num(1,:))
     ! write(*,*) " num of top layer at 1st time  =", sum(drop%num(100,:))
     ! write(*,*) "==============================================================="
+
 
   END SUBROUTINE Sub_phys_driver
 

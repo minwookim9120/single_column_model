@@ -36,6 +36,7 @@ MODULE Mod_drop_growth
       RH    = (e/es)*100.          ! Relative humidity    [%]
 
       S     = 0.01                 ! For test
+      ! S     = 0.01                 ! For test
 
       Vf = 1.; Vfb = 1.
       IF (ventilation_effect) THEN
@@ -404,15 +405,15 @@ MODULE Mod_drop_growth
             CFL_substep = MAXVAL(CFL_substep)
           END WHERE
           substep_dt = MINVAL(CFL_substep)      ; IF (substep_dt == 0) substep_dt = 1
-          substep_dt = 0.1                      ; IF (substep_dt == 0) substep_dt = 0.01
+          substep_dt = 0.02                      ; IF (substep_dt == 0) substep_dt = 0.01
           substep_nt = INT(dt/substep_dt)       ; IF (substep_nt == 0) substep_nt = 1
 
         
           local_nr = nr
           IF ( dt >= substep_dt ) THEN
             DO itt = 1, substep_nt
-              CALL Sub_Finite_volume_PPM ( local_nr, q%sfc_dt(1),             &
-                                           q%top_dt(1),                       &
+              CALL Sub_Finite_volume_PPM ( local_nr, 0.,                      &
+                                           0.,                                &
                                            dm, drop_column_num, CFL_substep,  &
                                            substep_dt,                        &
                                            dmb_dt,                            &
@@ -424,12 +425,11 @@ MODULE Mod_drop_growth
                   ! write(*,*) "CFL_substep =", dt*dm_dt/dm
                   ! write(*,*) "dmb_dt =", dmb_dt
                   ! write(*,*) "nr =", nr
-                  ! write(*,*) "next_nr =", next_nr
-              local_nr=next_nr
+                  ! write(*,*) "nr =", sum(nr)
             ENDDO
           ELSE
-            CALL Sub_Finite_volume_PPM ( nr, q%sfc_dt(1),                   &
-                                         q%top_dt(1),                       &
+            CALL Sub_Finite_volume_PPM ( nr, 0.,                            &
+                                         0.,                                &
                                          dm, drop_column_num, CFL_substep,  &
                                          dt,                                &
                                          dmb_dt,                            &
@@ -446,6 +446,8 @@ MODULE Mod_drop_growth
         CASE DEFAULT
           CALL FAIL_MSG("phys redistribution error")
       END SELECT
+                  ! write(*,*) "next_nr =", sum(next_nr)
+                  ! stop
 
     END SUBROUTINE compute_redist!}}}
 
@@ -483,5 +485,10 @@ MODULE Mod_drop_growth
 
          ENDDO
        ENDDO
+
+        !print*, next_nr
+        ! write(*,*) sum(nr)
+        ! write(*,*) sum(next_nr)
+
     END SUBROUTINE reassign!}}}
 END MODULE Mod_drop_growth 

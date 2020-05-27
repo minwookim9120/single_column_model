@@ -17,22 +17,6 @@ PROGRAM main_prog
   CALL Sub_allocate_dz
   CALL Sub_set_grid
 
-  CALL Sub_read_NC_file( in_path, z_in_name, &
-                                      z%din, &
-                            slat,      elat, &
-                            slon,      elon   )
-  CALL Sub_read_NC_file( in_path, t_in_name, &
-                                   temp%din, &
-                            slat,      elat, &
-                            slon,      elon   )
-  CALL Sub_read_NC_file( in_path, q_in_name, &
-                                      q%din, &
-                            slat,      elat, &
-                            slon,      elon   )
-  CALL Sub_read_NC_file( in_path, w_in_name, &
-                                      w%din, &
-                            slat,      elat, &
-                            slon,      elon   )
   CALL Sub_init_vars
 
 !== do time
@@ -46,6 +30,12 @@ PROGRAM main_prog
 
    write(*,*) "it =            2", " total Q =",  sum(q%dout(:,2))
    write(*,*) "it = ",         nt,  "total Q =", sum(q%dout(:,nt))
+   write(*,*) "it =            2", " total t =",  sum(temp%dout(:,2))
+   write(*,*) "it = ",         nt,  "total t =", sum(temp%dout(:,nt))
+
+  ! do it = 1, nz
+  !   z%dz(it) = real(it)
+  ! enddo
 
   CALL Sub_write_netcdf ( nz, nt, dz%dz, z%dz,      &
                           temp%dout, q%dout,        &

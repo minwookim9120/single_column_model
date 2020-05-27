@@ -41,15 +41,23 @@
   drop_column_num    = 100         !! nbin 
   drop_min_diameter  = 1.0e-6      !! unit = m
   drop_max_diameter  = 0.01        !! unit = m
+  redist_option      = 1           !! 1 : re-assignment, 2 : ppm
 /
 
 &file_info
-  in_path     = "../input/"
+  in_path     = "../input"
   t_in_name   = "e5.mnth.mean.an.pl.128_130_t.regn320sc.2017010100_2017120100.nc"
   q_in_name   = "e5.mnth.mean.an.pl.128_133_q.regn320sc.2017010100_2017120100.nc"
   w_in_name   = "e5.mnth.mean.an.pl.128_135_w.regn320sc.2017010100_2017120100.nc"
   z_in_name   = "e5.mnth.mean.an.pl.128_129_z.regn320sc.2017010100_2017120100.nc"
-  output_path = "./"
-  !output_name = "output_ppm_arith.nc"
+  output_path = "./output"
+
   output_name = "output.nc"
+
+  !output_name = "output_fv_geo_real_w.nc"
+  !output_name = "output_ppm_geo_real_w.nc"
+
+  !output_name = "output_fv_geo_ideal_w.nc"
+  !output_name = "output_pp_geo_ideal_w.nc"
+  !output_name = "output.nc"
 /

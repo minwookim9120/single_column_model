@@ -12,9 +12,9 @@ MODULE Mod_realcase
     SUBROUTINE Sub_real_init                        & 
                (                                    &
                 read_pres, read_psfc, read_temp,    &
-                z, input_nz, nz,                    &
+                z, input_nz, nz, input_ps,          &
                 qv_in,  temp_in, vert_in, w_in,     &
-                qv_out, temp_out,  p_out, w_out       &
+                qv_out, temp_out,  p_out, w_out     &
                )
 
     USE Mod_const, only: Ps, Rd, g, Cp
@@ -26,6 +26,7 @@ MODULE Mod_realcase
     REAL, DIMENSION(input_nz), INTENT(IN)  ::     qv_in,          &  !! [kg/kg]
                                                 temp_in,          &  !! [K]
                                                 vert_in              !! P [hPa] or Z [m]
+    REAL,                      INTENT(IN)  :: input_Ps 
     REAL, DIMENSION(input_nz), INTENT(IN)  ::      w_in
     REAL, DIMENSION(nz),       INTENT(IN)  ::         z              !! [kg/kg]
     ! Out
@@ -39,35 +40,36 @@ MODULE Mod_realcase
     REAL    :: t 
 
     if (read_pres == 1 ) then
-        if (read_temp == 1 ) then        ! input data : P[hPa] & theta[K]
-            th_in = temp_in
-            p_in  = vert_in
-            t_in  = th_in*((P_in/Ps)**(Rd/Cp))
-            Tv    = t_in*(1+(0.61*qv_in))
-            H     = (Rd*Tv)/g
-            z_in  = -H*(log(P_in/Ps))
-        else                            ! input data : P[hPa] & T[K]
-            P_in = vert_in
-            T_in = temp_in
-            Tv   = T_in*(1+(0.61*qv_in))
-            H    = (Rd*Tv)/g
-            z_in = -H*(log(P_in/Ps))
-            Th_in = T_in*((Ps/P_in)**(Rd/cp))
-        endif
+      if (read_temp == 1 ) then        ! input data : P[hPa] & theta[K]
+        th_in = temp_in
+        p_in  = vert_in
+        t_in  = th_in*((P_in/Ps)**(Rd/Cp))
+        Tv    = t_in*(1+(0.61*qv_in))
+        H     = (Rd*Tv)/g
+        z_in  = -H*(log(P_in/Ps))
+      else                            ! input data : P[hPa] & T[K]
+        P_in = vert_in
+        T_in = temp_in
+        Tv   = T_in*(1+(0.61*qv_in))
+        H    = (Rd*Tv)/g
+        z_in = -H*(log(P_in/Ps))
+        Th_in = T_in*((Ps/P_in)**(Rd/cp))
+      endif
     else
-        if (read_temp == 1 ) then        ! input data : z[m] & theta[K]
-            print*, ":: INPUT DATA VARIABLE ERROR ::"
-            print*, ":: 'Pres' is calculated using 'Temp', and"
-            print*, ":: 'Temp' is calculated using 'Pres'."
-            print*, ":: Please check the input data variable."
-        else                            ! input data : z[m] & T[K]
-            z_in  = vert_in/g
-            t_in  = temp_in
-            Tv    = t_in*(1+(0.61*qv_in))
-            H     = (Rd*Tv)/g
-            p_in  = Ps*exp(-(z_in/H))
-            th_in = t_in*((Ps/p_in)**(Rd/cp))
-        endif
+      if (read_temp == 1 ) then        ! input data : z[m] & theta[K]
+        z_in  = vert_in
+        H     = 7800.
+        p_in  = input_Ps*exp(-(z_in/H))
+        Th_in = temp_in
+        T_in = Th_in*((P_in/Ps)**(Rd/Cp))
+      else                            ! input data : z[m] & T[K]
+        z_in  = vert_in/g
+        t_in  = temp_in
+        Tv    = t_in*(1+(0.61*qv_in))
+        H     = (Rd*Tv)/g
+        p_in  = Ps*exp(-(z_in/H))
+        th_in = t_in*((Ps/p_in)**(Rd/cp))
+      endif
     endif
 
 !!! :: Interpolate to fit nz

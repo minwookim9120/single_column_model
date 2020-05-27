@@ -41,6 +41,7 @@ MODULE Mod_read
                        q_in_name,   &
                        w_in_name,   &
                        z_in_name,   &
+                       input_name,  &
                        output_path, &
                        output_name
 
@@ -126,5 +127,54 @@ MODULE Mod_read
       ! out_var(:) = var(1,1,:,1)
 
     END SUBROUTINE Sub_read_NC_file 
+
+    SUBROUTINE Sub_read_txt_file(inpath, inname,       &
+                                 line,                 &
+                                 sfc_p, sfc_T, sfc_qv, &
+                                 in_z, in_theta, in_qv )
+
+      IMPLICIT NONE
+      CHARACTER(LEN=*), INTENT(IN)    :: inpath, inname
+      REAL,             INTENT(OUT)   :: sfc_p, sfc_T, sfc_qv
+      REAL,             DIMENSION(:), ALLOCATABLE,INTENT(OUT) :: in_z, in_theta, in_qv
+      ! DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE,INTENT(OUT) :: in_z, in_theta, in_qv
+      INTEGER,          INTENT(INOUT) :: line
+      INTEGER          :: read_err
+      INTEGER          :: i
+
+      IF( ALLOCATED(in_z) ) DEALLOCATE(in_z)
+      IF( ALLOCATED(in_theta) ) DEALLOCATE(in_theta)
+      IF( ALLOCATED(in_qv) ) DEALLOCATE(in_qv)
+
+      OPEN(10, FILE=TRIM(inpath)//'/'//TRIM(inname), STATUS='old')
+
+      READ(10, *)
+      READ(10, 100) sfc_p, sfc_T, sfc_qv
+      line = 0
+      DO
+        READ(10, *, iostat=read_err)
+        IF (read_err /= 0) EXIT
+        line = line + 1
+      ENDDO
+
+      REWIND(10)
+
+      ALLOCATE( in_z(line) )
+      ALLOCATE( in_theta(line) )
+      ALLOCATE( in_qv(line) )
+
+      READ(10, *)
+      READ(10, *)
+      DO i = 1, line
+        READ(10, 101) in_z(i), in_theta(i), in_qv(i)
+      ENDDO
+
+    !  100 FORMAT (4X, F6.2, F9.5,3X, F8.6)
+    !  101 FORMAT (4X, F6.0, F9.5,3X, F9.7)
+      100 FORMAT (F11.2, F11.5, F10.7)
+      101 FORMAT (F11.0, F11.5, F10.7)
+
+    END SUBROUTINE Sub_read_txt_file
+
 
 END MODULE Mod_read  

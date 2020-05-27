@@ -34,8 +34,9 @@ while(t<=last)
 'c'
 'set t 't
 say t
-'set z 1 50'
-* 'set vrange 0.0 0.01'
+'set z 1 100'
+* 'set vrange 250 300'
+* 'set vrange -1e+1 1e+1'
 * 'set vrange -3 3'   
 tt=t+1 
 * 'd 'var'(t='tt')-'var'(t='t')'

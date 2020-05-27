@@ -42,6 +42,7 @@ MODULE Mod_global
                           q_in_name, &
                           w_in_name, &
                           z_in_name, &
+                         input_name, &
                         output_path, &
                         output_name
 
@@ -52,6 +53,11 @@ MODULE Mod_global
   INTEGER                               :: nt     
   INTEGER                               :: substep_nt
   INTEGER                               :: varid
+  REAL                                  :: sfc_p,          &
+                                           sfc_t,          &
+                                           sfc_q
+
+
   TYPE varinfo
     INTEGER                             :: varid
     REAL, DIMENSION(:),     ALLOCATABLE :: dz,            & ! vars in delta z                   (nz)  
