@@ -29,7 +29,7 @@ MODULE Mod_integration
 
       DO it = 1, nt
 
-        write(*,*) 'it times = ', it
+        ! write(*,*) 'it times = ', it
         ! Compute dyn
         CALL Sub_dyn_driver          ! in  : temp%dz, q%dz
                                      ! out : temp%next_dz, q%next_dz
@@ -38,7 +38,7 @@ MODULE Mod_integration
         temp%dz = temp%next_dz
         q%dz    = q%next_dz
   
-        write(*,*) 'it times = ', it
+        ! write(*,*) 'it times = ', it
         ! CALL SUCCESS_MSG("dyn success") 
         ! write(*,*) 'check tmep. =', temp%dz
 
@@ -46,7 +46,7 @@ MODULE Mod_integration
         CALL Sub_phys_driver         ! in  : temp%dz, q%dz, drop%num, RH
                                      ! out : temp%next_dz, q%next_dz, drop%next_num, RH 
 
-        write(*,*) 'it times = ', it
+        ! write(*,*) 'it times = ', it
         ! CALL SUCCESS_MSG("phys success") 
         ! write(*,*) 'check drop. =', drop%num(50,:) 
 

@@ -33,7 +33,8 @@ MODULE Mod_read
                           drop_column_num,   &
                           drop_min_diameter, &
                           drop_max_diameter, &
-                          redist_option 
+                          redist_option,     &
+                          ventilation_effect
 
   NAMELIST /file_info/ in_path,     &
                        t_in_name,   &
@@ -95,7 +96,7 @@ MODULE Mod_read
      
       IF (ALLOCATED(out_var)) DEALLOCATE(out_var)
 
-      CALL check(nf90_open(TRIM(inpath)//TRIM(inname), nf90_nowrite, ncid))
+      CALL check(nf90_open(TRIM(inpath)//"/"//TRIM(inname), nf90_nowrite, ncid))
       CALL SUCCESS_MSG("Open input")
       CALL check(nf90_inquire_dimension(ncid, 1, tname, nt))
       CALL check(nf90_inquire_dimension(ncid, 2, zname, nz))

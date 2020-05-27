@@ -45,6 +45,8 @@ MODULE Mod_global
                         output_path, &
                         output_name
 
+ LOGICAL             :: ventilation_effect
+
     ! Declare variables 
   REAL                                  :: dt, substep_dt
   INTEGER                               :: nt     
