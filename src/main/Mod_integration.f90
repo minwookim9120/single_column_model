@@ -28,7 +28,6 @@ MODULE Mod_integration
       drop%ref_mb    = drop%mb(1,:)
 
       DO it = 1, nt
-
         ! write(*,*) 'it times = ', it
         ! Compute dyn
         CALL Sub_dyn_driver          ! in  : temp%dz, q%dz
@@ -61,7 +60,6 @@ MODULE Mod_integration
         ! temp%dout(:,it+1)=temp%next_dz(:)
         temp%dout(:,it+1)=drop%next_num(50,:)
         q%dout(:,it+1)=q%next_dz(:)
-
       ENDDO !! time do
 
     END SUBROUTINE Sub_Integration_time

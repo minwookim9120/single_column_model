@@ -40,7 +40,6 @@ MODULE Mod_init_driver
 
       !! computed dt considering CFL condition 
       CALL Sub_set_dt
-      nt=100
       CALL Sub_allocate_dt
 
       DO it = 1, nt   !! surface condition

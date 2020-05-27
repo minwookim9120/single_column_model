@@ -26,8 +26,9 @@ MODULE Mod_drop_growth
       REAL, DIMENSION(drop_column_num)   :: Vf
       REAL, DIMENSION(drop_column_num+1) :: Vfb
       ! Out
-      REAL, DIMENSION(drop_column_num), INTENT(OUT) :: dm_dt
-      REAL, DIMENSION(drop_column_num), INTENT(OUT) :: dmb_dt
+      REAL, DIMENSION(drop_column_num),   INTENT(OUT) :: dm_dt
+      REAL, DIMENSION(drop_column_num+1), INTENT(OUT) :: dmb_dt
+      INTEGER :: iq
 
       CALL es_Fk_Fd(temp,pres,es,Fk,Fd) 
       
@@ -41,16 +42,6 @@ MODULE Mod_drop_growth
         call ventilation(temp, Pres, r, Vf)
         call ventilation(temp, Pres, rb, Vfb)
       END IF
-
-      ! write(*,*) "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***"
-      ! write(*,*) "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***"
-      !  write(*,*) temp, pres, r 
-      ! write(*,*) shape(Vf)
-      ! write(*,*) Vf
-      ! write(*,*) "xxx " 
-      ! write(*,*) shape(Vfb)
-      ! write(*,*) Vfb
-      ! stop
 
       dm_dt  = 4*Pi*r*(1./(Fd+Fk))*S*Vf
       dmb_dt = 4*Pi*rb*(1./(Fd+Fk))*S*Vfb
@@ -76,7 +67,7 @@ MODULE Mod_drop_growth
     END SUBROUTINE es_Fk_Fd!}}}
 
     !== !== !==
-    SUBROUTINE terminal_velocity( T, p , r, Vt )!{{{
+    SUBROUTINE terminal_velocity_beard_1976( T, p , r, Vt )!{{{
 
       IMPLICIT NONE
 
@@ -103,8 +94,8 @@ MODULE Mod_drop_growth
       drho    = rho - rhov             ! [ kg * m^-3  ] , 
                                        ! difference between fluid density of drop and air
 
-      eta0    = 1.818e-4     ! [  g * cm^-1 * s^-1 ] , at 20C 
-      ! eta0    = eta0*0.1               ! [ kg * m^-1 * s^-1  ]
+      ! eta0    = 1.818e-4     ! [  g * cm^-1 * s^-1 ] , at 20C 
+      eta0 = 1.72 * (1./10.)**(5.) * ( 393. / ( T0 + 120. ) ) * ( ( T0 / 273. )**(3./2.) )
 
       ! dynamic viscosity, A short course in cloudphysics 3rd, 102 page
       eta     = 1.72e-5 * ( 393 / ( T + 120) ) * (( T / 273 )**(3./2.))
@@ -234,7 +225,88 @@ MODULE Mod_drop_growth
         Vt  = ( eta * N_Re ) / ( rhov * d*1e-6 )     
       ENDIF
 
-      END SUBROUTINE terminal_velocity!}}}
+      END SUBROUTINE terminal_velocity_beard_1976 !}}}
+
+    !== !== !==
+    SUBROUTINE terminal_velocity_beard_1977( T, p, r, Vt )!{{{
+
+      IMPLICIT NONE
+      ! In
+      REAL,                 INTENT(IN)  :: T, P
+      REAL,                 INTENT(IN)  :: r   
+      ! Local
+      INTEGER                           :: irr
+      REAL                              :: l0, T0, p0, rho0, eta0, &
+                                           rhov, eta, l,           &
+                                           eps_c, eps_s, f
+      REAL                              :: V0, D
+      ! Local
+      REAL,                 INTENT(OUT) :: Vt
+  
+      l0          = 6.62e-6     ! [ cm ]
+      rhov        = p  * 100. / ( Rd * T  )   ! density of air 
+      eta         = 1.72e-5 * ( 393. / ( T + 120. ) ) * ( ( T / 273. )**(3./2.) )
+
+      T0          = 293.15                    ! 20 'C ┐ Basic
+      p0          = 1013.25                   ! 1 atm ┘ statement
+
+      rho0        = p0 * 100. / ( Rd * T0 )
+      eta0        = 1.72e-5 * ( 393. / ( T0 + 120. ) ) * ( ( T0 / 273. )**(3./2.) )
+
+      ! V0
+      ! beard 1976 : T = 20C, P = 1013.25
+      CALL terminal_velocity_beard_1976( T0 , p0, r, V0 )
+
+      !--------------------- beard 1977 --------------------------------------
+
+      D = 2. * r * 1e+6        ! radius -> diameter & [ meter ] -> [ micrometer ]
+
+      !------------------------- Regime 1 ------------------------------------
+
+      IF ( D < 1. ) THEN
+        Vt = 0.             ! [ m/s ]
+      ELSE IF ( D >= 1. .and. D < 40. ) THEN
+        ! [ m ]
+        l = l0 * 0.01 * ( eta / eta0 ) * ( ( p0 * rho0 ) / ( p * rhov ) )**(1./2.)
+        ! [ dimensionless ] velocity adjustment factor
+        f = ( eta0 / eta ) * ( 1 + 2.51 * ( l / ( D * 1e-6 ) ) ) / &
+                                   ( 1 + 2.51 * ( ( l0 * 0.01 ) / ( D * 1e-6 ) ) )
+
+        ! [ m * s^-1 ] = [ dimensionless ] * [ m * s^-1 ] velocity at 1
+        ! micrometer ~ 40 micrometer   
+        Vt = V0 * f
+
+      !------------------------- Regime 2 ------------------------------------
+
+      !              The unit of input diameter must be [ cm ] !!!
+      
+      !-----------------------------------------------------------------------
+
+      ELSE IF ( D >= 40  .and. D < 6e+3 ) THEN
+        ! [ dimensionless ] = [ kg * m^-3 ] * [ kg^-1 * m^3 ]
+        eps_c   = ( ( rho0 / rhov )**(1./2.) ) - 1.
+        ! [ dimensionless ] = [ kg * m^-1 * s^-1 ] * [ kg^-1 * m * s ]
+        eps_s   = ( eta0 / eta ) - 1.
+        ! [ dimensionless ]
+        f       = 1.104 * eps_s + ( ( ( 1.058 * eps_c ) - ( 1.104 * eps_s) ) &
+                                                * ( 5.52 + log( D*1e-4 ) ) / 5.01 )   + 1.
+
+        Vt      = V0 * f
+
+      ELSE IF ( D >= 6e+3 )  THEN
+        ! [ dimensionless ] = [ kg * m^-3 ] * [ kg^-1 * m^3 ]
+        eps_c   = ( ( rho0 / rhov )**(1./2.) ) - 1.
+        ! [ dimensionless ] = [ kg * m^-1 * s^-1 ] * [ kg^-1 * m * s ]
+        eps_s   = ( eta0 / eta ) - 1.
+        ! [ dimensionless ]
+        f     = 1.104 * eps_s + ( ( ( 1.058 * eps_c ) - ( 1.104 * eps_s) ) &
+                                             * ( 5.52 + log( 6e+3*1e-4 ) ) / 5.01 )   + 1.
+
+        Vt    = V0 * f
+
+      ENDIF 
+
+    END SUBROUTINE terminal_velocity_beard_1977!}}}
 
     !== !== !==
    SUBROUTINE ventilation(T, P, r, Vf) !{{{
@@ -249,23 +321,28 @@ MODULE Mod_drop_growth
       REAL                              :: rhov
       REAL                              :: eta 
       INTEGER                           :: irr
+      REAL                              :: tt, pp 
       ! Out
       REAL, DIMENSION(:), INTENT(OUT) :: Vf     ! ventilation effect
 
       rhov    = p * 100. / ( Rd * T )  ! [kg m^-3] , density of air
 
       Vt = 0.
+      ! tt = 293.15 ; pp = 1013.25
+      ! tt = 263.15 ; pp = 500
       DO irr = 1, size(r)
-        call terminal_velocity(T, P, r(irr), Vt(irr))   ! Beard (1976)
+        ! call terminal_velocity_beard_1976(tt, pp, r(irr), Vt(irr))   ! Beard (1977)
+        call terminal_velocity_beard_1977(T, P, r(irr), Vt(irr))   ! Beard (1977)
       END DO
 
       ! write(*,*) shape(vt)
       ! write(*,*) "==========" 
       ! write(*,*) r 
-      ! open(unit = 111, file = 'test.txt', status = "unknown", &
+      ! open(unit = 111, file = '1976.bin', status = "unknown", &
+      ! open(unit = 111, file = 'r.bin', status = "unknown", &
       !       access="direct", form="unformatted", recl=100*4) 
       !
-      ! write(unit = 111, rec=1) vt
+      ! write(unit = 111, rec=1) r
       ! write(unit = 111, rec=2) r
       !
       ! stop
@@ -326,8 +403,8 @@ MODULE Mod_drop_growth
           ELSEWHERE
             CFL_substep = MAXVAL(CFL_substep)
           END WHERE
-          ! substep_dt = MINVAL(CFL_substep)      ; IF (substep_dt == 0) substep_dt = 1
-          substep_dt = 0.02                      ; IF (substep_dt == 0) substep_dt = 0.01
+          substep_dt = MINVAL(CFL_substep)      ; IF (substep_dt == 0) substep_dt = 1
+          substep_dt = 0.1                      ; IF (substep_dt == 0) substep_dt = 0.01
           substep_nt = INT(dt/substep_dt)       ; IF (substep_nt == 0) substep_nt = 1
 
         
@@ -385,6 +462,8 @@ MODULE Mod_drop_growth
       ! Out
       REAL, DIMENSION(drop_column_num), INTENT(OUT) :: next_nr
 
+      next_nr = 0.
+
        DO inext_m = 1, drop_column_num
          DO im = 1, drop_column_num-1
 
@@ -397,17 +476,12 @@ MODULE Mod_drop_growth
             x  = (NM - (ref_m(im+1) * N)) / (ref_m(im)-ref_m(im+1))
             y  = N - x 
 
-            ! next_nr(im) = nr(im) + x
-            ! next_nr(im+1) = nr(im+1) + y
-            next_nr(im) = x
-            next_nr(im+1) = y
+            next_nr(im)   = next_nr(im)   + x 
+            next_nr(im+1) = next_nr(im+1) + y
+
           ENDIF
 
          ENDDO
        ENDDO
-        ! write(*,*) sum(nr)
-        ! write(*,*) sum(next_nr)
-        ! stop
-
     END SUBROUTINE reassign!}}}
 END MODULE Mod_drop_growth 

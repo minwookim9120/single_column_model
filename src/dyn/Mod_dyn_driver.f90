@@ -350,9 +350,9 @@ MODULE Mod_dyn_driver
       dvar        = - (flux(i+1) - flux(i))
       ! dvar        = - (flux(i+1)/dz(i+1) - flux(i)/dz(i))
       next_var(i) = var(i) + dvar * dt
-      IF ( next_var(i) .lt. 0. ) THEN !! mass conservation filter
-        CALL FAIL_MSG("ERROR :: dynamics, Physical quantity cannot be negative")
-      ENDIF
+      ! IF ( next_var(i) .lt. 0. ) THEN !! mass conservation filter
+      !   CALL FAIL_MSG("ERROR :: dynamics, Physical quantity cannot be negative")
+      ! ENDIF
     END DO
 
   END SUBROUTINE Sub_Finite_volume_PPM
