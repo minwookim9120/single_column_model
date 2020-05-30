@@ -33,10 +33,11 @@ MODULE Mod_drop_growth
       CALL es_Fk_Fd(temp,pres,es,Fk,Fd) 
       
       e     = pres * qv/0.622      ! vapor pressure       [hPa]
-      RH    = (e/es)*100.          ! Relative humidity    [%]
+      RH    = (e/es)               ! Relative humidity    
 
-      S     = 0.01                 ! For test
-      ! S     = 0.01                 ! For test
+      ! S     = RH - 1               ! For test
+
+     S     = 0.01               ! For test
 
       Vf = 1.; Vfb = 1.
       IF (ventilation_effect) THEN
@@ -421,13 +422,16 @@ MODULE Mod_drop_growth
                                            dmb_dt,                            &
                                            next_nr                            &
                                                                              ) 
-                  ! write(*,*) "dm =", dm
-                  ! write(*,*) "dt =", dt
-                  ! write(*,*) "drop_column_num =", drop_column_num
-                  ! write(*,*) "CFL_substep =", dt*dm_dt/dm
-                  ! write(*,*) "dmb_dt =", dmb_dt
-                  ! write(*,*) "nr =", nr
-                  ! write(*,*) "nr =", sum(nr)
+              !     write(*,*) "dm =", dm
+              !     write(*,*) "dt =", dt
+              !     write(*,*) "drop_column_num =", drop_column_num
+              !     write(*,*) "CFL_substep =", substep_dt*dm_dt/dm
+              !     write(*,*) "dmb_dt =", dmb_dt
+              !     write(*,*) "nr =", nr
+              !     write(*,*) "nr =", sum(nr)
+              ! !     write(*,*) "next_nr =", next_nr
+              !     write(*,*) "next_nr =", sum(next_nr)
+              ! stop
               local_nr=next_nr
             ENDDO
           ELSE
@@ -490,8 +494,8 @@ MODULE Mod_drop_growth
        ENDDO
 
         !print*, next_nr
-        ! write(*,*) sum(nr)
-        ! write(*,*) sum(next_nr)
+!         write(*,*) sum(nr*ref_m)
+!         write(*,*) sum(next_nr*ref_m)
 
     END SUBROUTINE reassign!}}}
 END MODULE Mod_drop_growth 

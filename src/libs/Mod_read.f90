@@ -24,12 +24,14 @@ MODULE Mod_read
                           read_psfc, &
                           z_top
 
-  NAMELIST /Dyn_options/ gamma_dry,     &
-                         dyn_option,    &
-                         dz_option,     &
+  NAMELIST /Dyn_options/ gamma_dry,          &
+                         dyn_option,         &
+                         vertical_advection, &
+                         dz_option,          &
                          dzr
 
   NAMELIST /Phys_options/ dist_option,       &
+                          phys_feedback,     &
                           drop_column_num,   &
                           drop_min_diameter, &
                           drop_max_diameter, &
@@ -169,6 +171,9 @@ MODULE Mod_read
       DO i = 1, line
         READ(10, 101) in_z(i), in_theta(i), in_qv(i)
       ENDDO
+
+      sfc_qv = sfc_qv / 1000.
+      in_qv  = in_qv  / 1000.
 
     !  100 FORMAT (4X, F6.2, F9.5,3X, F8.6)
     !  101 FORMAT (4X, F6.0, F9.5,3X, F9.7)

@@ -123,8 +123,7 @@
 
       SUBROUTINE Sub_write_netcdf_drop ( nz, nt, z_out,       &!{{{
                                          nbin, ref_r,         &
-                                         m, num,              &
-                                         r,                   &
+                                         num,                 &
                                          out_path, out_name  )
 
         USE NETCDF
@@ -134,9 +133,7 @@
         REAL, DIMENSION(nz),      INTENT(IN)  ::     z_out
         REAL, DIMENSION(nbin),    INTENT(IN)  ::     ref_r
 
-        REAL, DIMENSION(nbin,nz,nt+1), INTENT(IN) ::    m, &
-                                                      num, &
-                                                        r
+        REAL, DIMENSION(nbin,nz,nt+1), INTENT(IN) ::  num
         CHARACTER(LEN=*),       INTENT(IN)   ::  out_path,  &
                                                  out_name
         ! Local
@@ -187,20 +184,11 @@
         CALL CHECK( nf90_put_att(ncid, 4,  un, time%units) )
         CALL CHECK( nf90_put_att(ncid, 4,  ax,  time%axis) )
 
-        ! Define "m" and its attributes 
-        CALL CHECK( nf90_def_var(ncid, "m", nf90_double, dimid4, varid=varid) )
-        CALL CHECK( nf90_put_att(ncid, 5, des,   "mass") )
-        CALL CHECK( nf90_put_att(ncid, 5,  un, "kg m-3") )
-
         ! Defin "num" and its attributes 
         CALL CHECK( nf90_def_var(ncid, "num", nf90_double, dimid4, varid=varid) )
-        CALL CHECK( nf90_put_att(ncid, 6, des,   "number conc.") )
-        CALL CHECK( nf90_put_att(ncid, 6,  un,          "# m-3") )
+        CALL CHECK( nf90_put_att(ncid, 5, des,   "number conc.") )
+        CALL CHECK( nf90_put_att(ncid, 5,  un,          "# m-3") )
 
-        ! Defin "num" and its attributes 
-        CALL CHECK( nf90_def_var(ncid, "r", nf90_double, dimid4, varid=varid) )
-        CALL CHECK( nf90_put_att(ncid, 7, des,   "radius") )
-        CALL CHECK( nf90_put_att(ncid, 7,  un,      " m ") )
 
                 ! End define mode.
         CALL CHECK( nf90_enddef(ncid) )
@@ -220,9 +208,7 @@
         ! do irec = 1, nnt
           ! dim4_start(4) = 1
           ! dim4_count(4) = irec
-          CALL CHECK( nf90_put_var(ncid, 5,   m(:,:,:), start=dim4_start, count=dim4_count) )
-          CALL CHECK( nf90_put_var(ncid, 6, num(:,:,:), start=dim4_start, count=dim4_count) )
-          CALL CHECK( nf90_put_var(ncid, 7,   r(:,:,:), start=dim4_start, count=dim4_count) )
+          CALL CHECK( nf90_put_var(ncid, 5, num(:,:,:), start=dim4_start, count=dim4_count) )
         ! end do 
         CALL SUCCESS_MSG("m")
         CALL SUCCESS_MSG("num")

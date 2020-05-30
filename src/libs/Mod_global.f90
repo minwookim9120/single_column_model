@@ -47,7 +47,9 @@ MODULE Mod_global
                           drop_name, &
                         output_name
 
- LOGICAL             :: ventilation_effect
+ LOGICAL             :: ventilation_effect, &
+                             phys_feedback, & 
+                        vertical_advection
 
     ! Declare variables 
   REAL                                  :: dt, substep_dt
