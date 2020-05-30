@@ -21,23 +21,25 @@
   elat            = 187 
 
   nz              = 100          !! unit = number of vertical layer
-  z_top           = 3000.0      !! unit = m
+  z_top           = 2000.0      !! unit = m
 /
 
 &Dyn_options
-  gamma_dry       = 0.01        !! unit = K/m
+  gamma_dry          = 0.01        !! unit = K/m
 
-  dyn_option      = 3           !! 1 : Finite Diff., 2 : Finite volume, 3 : PPM
+  vertical_advection = .ture.     !!  
+  dyn_option         = 3           !! 1 : Finite Diff., 2 : Finite volume, 3 : PPM
 
-  dz_option       = 2           !! 1 : arithmetic progression, dz=z_top/nz 
-                                !! 2 : geomatric sequence, dz(k)=dz(k-1)*dzr
+  dz_option          = 2           !! 1 : arithmetic progression, dz=z_top/nz 
+                                   !! 2 : geomatric sequence, dz(k)=dz(k-1)*dzr
 
-    dzr           = 1.05        !! You need this options, when you choose
-                                !! geomatric sequence (dz_option = 2) 
+    dzr              = 1.05        !! You need this options, when you choose
+                                   !! geomatric sequence (dz_option = 2) 
 /
 
 &Phys_options
-  dist_option        = 2           !! 1 : Log-nomal distribution, 2 : Gamma distribution
+  dist_option        = 1           !! 1 : Log-nomal distribution, 2 : Gamma distribution
+  phys_feedback      = .false.      !! 
   drop_column_num    = 100         !! nbin 
   drop_min_diameter  = 1.0e-6      !! unit = m
   drop_max_diameter  = 0.01        !! unit = m

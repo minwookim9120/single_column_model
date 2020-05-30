@@ -82,7 +82,7 @@ MODULE Mod_distribution
         ! Gamma distribution
         D = 2*r
         dD = 2*dr
-        mu = (1.0e+9/nc) + 2.
+        mu = MIN((1.0e9/nc)+2,15.)
         lambda = ((nc/qc)*(GAMMA(mu+4.)/GAMMA(mu+1.))*pi*(1./6.)*rho) ** (1./3.)
         !n0 = (nc*lamb**(mu+1.))/GAMMA(mu+1.)
         DO ir = 1, nbin

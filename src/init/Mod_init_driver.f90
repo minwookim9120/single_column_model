@@ -82,8 +82,11 @@ MODULE Mod_init_driver
 
       CALL Sub_set_W ( nz , dz%dz , w%dz , w%stag_dz )
 
-      w%stag_dz(0) = 0.5
-      w%stag_dz(:) = 0.2
+      IF ( vertical_advection ) THEN
+        w%stag_dz(:) = 0.5
+      ELSE
+        w%stag_dz(:) = 0.0
+      ENDIF
 
       !! computed dt considering CFL condition 
       CALL Sub_set_dt
@@ -113,6 +116,11 @@ MODULE Mod_init_driver
               drop%m(iz,:), drop%mb(iz,:)  &
              ) 
       ENDDO
+
+      !drop%r (2:nz,:) = 0.
+      !drop%rb(2:nz,:) = 0.
+      !drop%m (2:nz,:) = 0.
+      !drop%mb(2:nz,:) = 0.
 
       write(*,*) "!== checking initial distribution"
       SELECT CASE(dist_option)

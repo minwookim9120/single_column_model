@@ -26,8 +26,6 @@ MODULE Mod_integration
       DO iar = 1, drop_column_num
       DO iaz = 1, nz
         drop%drop_dout(iar,iaz,1)  = drop%num(iaz,iar)
-        drop%mass_dout(iar,iaz,1)  = drop%m(iaz,iar)
-        drop%r_dout(iar,iaz,1)     = drop%r(iaz,iar)
       ENDDO
       ENDDO
       ! ref_m
@@ -36,18 +34,21 @@ MODULE Mod_integration
       drop%ref_num   = drop%num(1,:)
 
       DO it = 1, nt
-        write(*,*)  it
+        ! write(*,*)  it
         ! Compute dyn
         CALL Sub_dyn_driver          ! in  : temp%dz, q%dz
                                      ! out : temp%next_dz, q%next_dz
 
         ! update temp. and q by dyn.
-        temp%dz = temp%next_dz
-        q%dz    = q%next_dz
+        temp%dz     = temp%next_dz
+        q%dz        = q%next_dz
+        ! drop%num    = drop%next_num
   
         ! Compute phys
         CALL Sub_phys_driver         ! in  : temp%dz, q%dz, drop%num, RH
                                      ! out : temp%next_dz, q%next_dz, drop%next_num, RH 
+       drop%num(1,:) = drop%ref_num(:)
+       drop%m  (1,:) = drop%ref_m(:)
 
         ! update temp. and q by phys.
         temp%dz = temp%next_dz
@@ -58,9 +59,7 @@ MODULE Mod_integration
         q%dout(:,it+1)            = q%dz(:) 
         DO iar = 1, drop_column_num
         DO iaz = 1, nz
-          drop%drop_dout(iar,iaz,it+1)  = drop%next_num(iaz,iar)
-          drop%mass_dout(iar,iaz,it+1)  = drop%m(iaz,iar)
-          drop%r_dout(iar,iaz,it+1)     = drop%r(iaz,iar)
+          drop%drop_dout(iar,iaz,it+1)  = drop%num(iaz,iar)
         ENDDO
         ENDDO
       ENDDO !! time do
