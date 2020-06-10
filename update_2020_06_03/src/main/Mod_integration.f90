@@ -34,10 +34,10 @@ MODULE Mod_integration
       drop%ref_num   = drop%num(1,:)
 
       DO it = 1, nt
-        print*, "============================" 
-        print*, it 
-        !print*, temp%dz
-        print*, "============================" 
+        ! print*, "============================" 
+        ! print*, it 
+        ! !print*, temp%dz
+        ! print*, "============================" 
         ! write(*,*)  it
         ! Compute dyn
         CALL Sub_dyn_driver          ! in  : temp%dz, q%dz

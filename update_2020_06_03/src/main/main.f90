@@ -36,8 +36,8 @@ PROGRAM main_prog
                           output_path, output_name )     
 
   CALL Sub_write_netcdf_drop ( nz, nt, z%dz,                 &
-                               drop_column_num, drop%r(1,:), &
-                               drop%drop_dout,               &
+                               drop_column_num, drop%r(1,:),  &
+                               drop%drop_dout, drop%ref_m,   &
                                output_path, drop_name )    
 
   ! CALL Sub_deallocate 

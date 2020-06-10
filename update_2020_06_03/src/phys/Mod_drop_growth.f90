@@ -35,7 +35,8 @@ MODULE Mod_drop_growth
       e     = pres * qv/0.622      ! vapor pressure       [hPa]
       RH    = (e/es)               ! Relative humidity    
 
-      S     = RH - 1               ! For test
+     ! S     = RH - 1               ! For test
+       S     = 0.01
 
       Vf = 1.; Vfb = 1.
       IF (ventilation_effect) THEN
