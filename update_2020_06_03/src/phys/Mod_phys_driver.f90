@@ -3,6 +3,7 @@ MODULE Mod_phys_driver
   USE Mod_global
   USE Mod_const
   USE Mod_drop_growth
+  USE collision_mod
 
   IMPLICIT NONE
 
@@ -14,6 +15,7 @@ MODULE Mod_phys_driver
   INTEGER :: i_m
   INTEGER :: iz
   REAL    :: dtotal_m, dqv, dtemp  
+  REAL,dimension(nz)    :: qc 
 
     ! write(*,*) "==============================================================="
     ! write(*,*) "for checking conservation after condensation and redistribution"
@@ -68,7 +70,14 @@ MODULE Mod_phys_driver
       q%next_dz(iz)=q%dz(iz) + dqv
 
       ! collision
-      ! CALL compute_collision
+      ! Change unit for collision
+      qc(iz) = sum(drop%num(:,iz)*drop%m(:,iz)) * rho ! [kg kg-1] -> [kg m-3]
+
+      ! Compute Stochastic Collision Equation
+      if ( collision_effect )  then
+          call coad1d( dt, drop_column_num, r0, qc(iz), drop%num(iz,:) )
+      end if
+    ! CALL compute_collision
     ENDDO
 
 

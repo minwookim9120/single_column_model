@@ -37,6 +37,7 @@ MODULE Mod_read
                           drop_max_diameter, &
                           redist_option,     &
                           ventilation_effect,&
+                          collision_effect,&
                           nc,                &
                           qc,                &
                           r0,                &

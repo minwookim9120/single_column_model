@@ -53,7 +53,8 @@ MODULE Mod_global
 
  LOGICAL             :: ventilation_effect, &
                              phys_feedback, & 
-                        vertical_advection
+                        vertical_advection, &
+                         collision_effect
 
     ! Declare variables 
   REAL                                  :: dt, substep_dt
