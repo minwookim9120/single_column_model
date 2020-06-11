@@ -30,7 +30,7 @@
   vertical_advection = .true.     !!  
   dyn_option         = 3           !! 1 : Finite Diff., 2 : Finite volume, 3 : PPM
 
-  dz_option          = 2           !! 1 : arithmetic progression, dz=z_top/nz 
+  dz_option          = 1           !! 1 : arithmetic progression, dz=z_top/nz 
                                    !! 2 : geomatric sequence, dz(k)=dz(k-1)*dzr
 
     dzr              = 1.05        !! You need this options, when you choose
@@ -39,7 +39,7 @@
 
 &Phys_options
   dist_option        = 1           !! 1 : Log-nomal distribution, 2 : Gamma distribution
-  phys_feedback      = .true.     !! 
+  phys_feedback      = .false.     !! 
   drop_column_num    = 100         !! nbin 
   drop_min_diameter  = 1.0e-6      !! unit = m
   drop_max_diameter  = 0.01        !! unit = m
@@ -54,12 +54,13 @@
 !  r0                 = 2.0e-6      !! [m]
 !  physic_unit        = "m^3"        !! kg or m^3
 
-  redist_option      = 1           !! 1 : re-assignment, 2 : ppm
+  redist_option      = 2           !! 1 : re-assignment, 2 : ppm
+  ventilation_effect = .ture.      !! 
   ventilation_effect = .ture.      !! 
 /
 
 &file_info
-  in_path     = "../../../input"
+  in_path     = "../../input"
   t_in_name   = "e5.mnth.mean.an.pl.128_130_t.regn320sc.2017010100_2017120100.nc"
   q_in_name   = "e5.mnth.mean.an.pl.128_133_q.regn320sc.2017010100_2017120100.nc"
   w_in_name   = "e5.mnth.mean.an.pl.128_135_w.regn320sc.2017010100_2017120100.nc"
