@@ -122,17 +122,20 @@
       END SUBROUTINE Sub_write_netcdf!}}}
 
       SUBROUTINE Sub_write_netcdf_drop ( nz, nt, z_out,       &!{{{
-                                         nbin, ref_r,         &
-                                         num,                 &
+                                         nbin, ref_r, dr, dz,     &
+                                         num, m, S,            &
                                          out_path, out_name  )
 
         USE NETCDF
         IMPLICIT NONE
         ! In
         INTEGER,                  INTENT(IN)  ::    nz, nt, nbin
-        REAL, DIMENSION(nz),      INTENT(IN)  ::     z_out
-        REAL, DIMENSION(nbin),    INTENT(IN)  ::     ref_r
+        REAL, DIMENSION(nz),      INTENT(IN)  ::     z_out, dz
+        REAL, DIMENSION(nbin),    INTENT(IN)  ::     ref_r, &
+                                                         m, &
+                                                        dr
 
+        REAL, DIMENSION(nz,nt+1),      INTENT(IN) ::    S
         REAL, DIMENSION(nbin,nz,nt+1), INTENT(IN) ::  num
         CHARACTER(LEN=*),       INTENT(IN)   ::  out_path,  &
                                                  out_name
@@ -165,7 +168,10 @@
         ! the netCDF variables. In Fortran, the unlimited dimension
         ! must come last on the list of dimids.
         dimid4 = (/ lon_dimid, lat_dimid, lev_dimid, rec_dimid /)
-        dimid1 = (/ lev_dimid /)
+        dimid2 = (/ lev_dimid, rec_dimid /)
+        dimid1 = (/ lon_dimid /)
+        dimid11 = (/ lev_dimid /)
+
 
         ! Define "x","y" and its attributes 
         CALL check( nf90_def_var(ncid, "Lon", nf90_double, lon_dimid, varid=varid) )
@@ -189,13 +195,38 @@
         CALL CHECK( nf90_put_att(ncid, 5, des,   "number conc.") )
         CALL CHECK( nf90_put_att(ncid, 5,  un,          "# m-3") )
 
+        ! Defin "r" and its attributes 
+        CALL CHECK( nf90_def_var(ncid, "r", nf90_double, dimid1, varid=varid) )
+        CALL CHECK( nf90_put_att(ncid, 6, des,   "radius.") )
+        CALL CHECK( nf90_put_att(ncid, 6,  un,          "m ") )
 
+        ! Defin "m" and its attributes 
+        CALL CHECK( nf90_def_var(ncid, "m", nf90_double, dimid1, varid=varid) )
+        CALL CHECK( nf90_put_att(ncid, 7, des,   "mass.") )
+        CALL CHECK( nf90_put_att(ncid, 7,  un,          "kg ") )
+
+        ! Defin "S" and its attributes 
+        CALL CHECK( nf90_def_var(ncid, "S", nf90_double, dimid2, varid=varid) )
+        CALL CHECK( nf90_put_att(ncid, 8, des,   "RH") )
+        CALL CHECK( nf90_put_att(ncid, 8,  un,          "% ") )
+
+        ! Defin "dr" and its attributes 
+        CALL CHECK( nf90_def_var(ncid, "dr", nf90_double, dimid1, varid=varid) )
+        CALL CHECK( nf90_put_att(ncid, 9, des,   "delta raidus") )
+        CALL CHECK( nf90_put_att(ncid, 9,  un,          "m") )
+
+        ! Defin "dr" and its attributes 
+        CALL CHECK( nf90_def_var(ncid, "dz", nf90_double, dimid11, varid=varid) )
+        CALL CHECK( nf90_put_att(ncid, 10, des,   "delta z") )
+        CALL CHECK( nf90_put_att(ncid, 10,  un,          "m") )
                 ! End define mode.
         CALL CHECK( nf90_enddef(ncid) )
 
         ! These settings tell netCDF to write one timestep of data.
-        dim1_count = (/ nz /)
+        dim1_count = (/ nbin /)
         dim1_start = (/ 1  /)
+        dim2_count = (/ nz, nnt /)
+        dim2_start = (/ 1, 1  /)
 
         ! Write the pretend data.
         CALL CHECK( nf90_put_var(ncid, 1, ref_r) )
@@ -208,7 +239,15 @@
         ! do irec = 1, nnt
           ! dim4_start(4) = 1
           ! dim4_count(4) = irec
+  
           CALL CHECK( nf90_put_var(ncid, 5, num(:,:,:), start=dim4_start, count=dim4_count) )
+          CALL CHECK( nf90_put_var(ncid, 6, ref_r, start=dim1_start, count=dim1_count) )
+          CALL CHECK( nf90_put_var(ncid, 7, m, start=dim1_start, count=dim1_count) )
+          CALL CHECK( nf90_put_var(ncid, 8, S, start=dim2_start, count=dim2_count) )
+          CALL CHECK( nf90_put_var(ncid, 9, dr, start=dim1_start, count=dim1_count) )
+        dim1_count = (/ nz /)
+        dim1_start = (/ 1  /)
+          CALL CHECK( nf90_put_var(ncid, 10, dr, start=dim1_start, count=dim1_count) )
         ! end do 
         CALL SUCCESS_MSG("m")
         CALL SUCCESS_MSG("num")

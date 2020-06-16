@@ -3,6 +3,7 @@ MODULE Mod_phys_driver
   USE Mod_global
   USE Mod_const
   USE Mod_drop_growth
+  USE Mod_collision
 
   IMPLICIT NONE
 
@@ -11,22 +12,21 @@ MODULE Mod_phys_driver
   SUBROUTINE Sub_phys_driver
 
   IMPLICIT NONE
-  INTEGER :: i_m
-  REAL    :: dtotal_m, dqv, dtemp  
-
-    ! write(*,*) "==============================================================="
-    ! write(*,*) "for checking conservation after condensation and redistribution"
-    ! write(*,*) " before "
-    ! write(*,*) " num of bot layer at 1st time  =", sum(drop%num(1,:))
-    ! write(*,*) " num of top layer at 1st time  =", sum(drop%num(100,:))
+  INTEGER :: i_m, ittt
+  INTEGER :: iz
+  REAL    :: dtotal_m, dqv, dtemp, sub_dt, sub_nt  
+  REAL,dimension(nz)    :: qc 
+    ! sub_dt=0.01
+    !
+    ! sub_nt=dt/sub_dt
     DO iz = 1, nz 
-
+      ! do ittt = 1, sub_nt     
       ! condensation and evaporation
       CALL compute_dmb_dt                        &
            (                                     &
             temp%dz(iz), q%dz(iz), p%dz(iz),     &
             drop%r(iz,:), drop%rb(iz,:), &
-            drop%dm_dt(iz,:), drop%dmb_dt(iz,:)  &
+            drop%dm_dt(iz,:), drop%dmb_dt(iz,:), drop%S(iz)  &
            ) 
 
       drop%m(iz,:)  = drop%ref_m(:)  + drop%dm_dt(iz,:)*dt
@@ -43,43 +43,38 @@ MODULE Mod_phys_driver
             drop%ref_m(:),  drop%m(iz,:),            &
             drop%ref_mb(:), drop%mb(iz,:),           &
             drop%dm_dt(iz,:), drop%dmb_dt(iz,:),     &
-            dt, drop%num(iz,:), drop%next_num(iz,:)     &
+            dt, drop%dr(:),                          &
+            drop%num(iz,:), drop%next_num(iz,:)      &
            )
 
       IF ( phys_feedback ) THEN  ! feedback by phys
-        dtotal_m = SUM(drop%next_num(iz,:)*drop%ref_m(:)) - &
-                   SUM(drop%num(iz,:)*drop%ref_m(:))
-        
-        dqv    = -1 * dtotal_m / rho      ! kg kg-1
-        dTemp  = -1 * (L*dqv) / (rho*Cp) 
+        dtotal_m = SUM(drop%next_num(iz,:)*drop%ref_m(:)*drop%dr(:)) - &
+                   SUM(drop%num(iz,:)*drop%ref_m(:)*drop%dr(:))
+        dqv    = -1 * dtotal_m            ! kg kg-1
+        dTemp  = -1 * (L*dqv) / Cp 
       ELSE ! non - feedback by phys
         dtemp = 0.
         dqv   = 0.
       ENDIF
 
-      ! write(*,*) drop%num(iz,:)
-      ! write(*,*) sum(drop%num(iz,:))
-      ! drop%num(iz,:) = drop%next_num(iz,:)
-      ! write(*,*) drop%num(iz,:)
-      ! write(*,*) sum(drop%num(iz,:))
-      !
-      ! stop
-
       temp%next_dz(iz)=temp%dz(iz) + dtemp
       q%next_dz(iz)=q%dz(iz) + dqv
 
+      ! temp%dz(iz)=temp%next_dz(iz)
+      ! q%dz(iz)=q%next_dz(iz)
+      drop%num(iz,:) = drop%next_num(iz,:)
+
       ! collision
-      ! CALL compute_collision
+      ! Change unit for collision
+      qc(iz) = sum(drop%num(:,iz)*drop%m(:,iz)) * rho ! [kg kg-1] -> [kg m-3]
+
+      ! Compute Stochastic Collision Equation
+      if ( collision_effect )  then
+          call coad1d( dt, drop_column_num, r0, qc(iz), drop%num(iz,:) )
+      end if
+    ! CALL compute_collision
     ENDDO
-
-
-    ! write(*,*) " after "
-    ! ! write(*,*) drop%dm_dt(1,:)
-    ! write(*,*) maxval(drop%next_num(10,:))
-    !
-    ! write(*,*) " num of bot layer at 1st time  =", sum(drop%next_num(10,:))
-    ! write(*,*) " num of top layer at 1st time  =", sum(drop%next_num(100,:))
-    ! write(*,*) "==============================================================="
+     ! write(*,*) drop%dmb_dt(2,:)
 
   END SUBROUTINE Sub_phys_driver
 

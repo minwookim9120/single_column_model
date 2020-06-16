@@ -36,7 +36,12 @@ MODULE Mod_read
                           drop_min_diameter, &
                           drop_max_diameter, &
                           redist_option,     &
-                          ventilation_effect
+                          ventilation_effect,&
+                          collision_effect,&
+                          nc,                &
+                          qc,                &
+                          r0,                &
+                          phys_unit
 
   NAMELIST /file_info/ in_path,     &
                        t_in_name,   &

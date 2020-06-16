@@ -6,6 +6,8 @@ MODULE Mod_dyn_driver
   CONTAINS
 
   SUBROUTINE Sub_dyn_driver
+    IMPLICIT NONE
+    INTEGER                     :: idbin
     IF (dyn_option .eq. 1) THEN
       CALL Sub_Finite_diff             &
            (                           &
@@ -67,6 +69,19 @@ MODULE Mod_dyn_driver
             w%stag_dz,                &                      
             q%next_dz                 &                      
            )                       
+
+      DO idbin = 1, drop_column_num
+        CALL Sub_Finite_volume_PPM      &
+             (                          &
+              drop%num(:,idbin), 0.,    &
+              0.,                       &
+              dz%dz, nz, CFL%dz,        &
+              dt,                       &
+              w%stag_dz,                &
+              drop%next_num(:,idbin)    &
+             )
+      ENDDO
+
     ENDIF
   END SUBROUTINE Sub_dyn_driver
 
@@ -170,28 +185,30 @@ MODULE Mod_dyn_driver
       IF (w(i) >= 0.) THEN
         IF (i == 1) CYCLE          ! inflow
         c   = dt*w(i)/dz(i-1)  
-        rst = (var(i-1) + 0.5*slp(i-1)*(1.-c))
+        rst = (var(i-1) + 0.5*slp(i-1)*(1.-c)) / dz(i)
       ELSE
         IF (i == nz+1) CYCLE       ! inflow
         c   = -dt*w(i)/dz(i)
-        rst = (var(i) - 0.5*slp(i)*(1.-c)) 
+        rst = (var(i) - 0.5*slp(i)*(1.-c)) / dz(i)
       END IF
       flux(i) = w(i) * rst
       IF (c .gt. 1.)  CALL FAIL_MSG("Courant number > 1")
     ENDDO
- 
+    ! flux(1)= 0.
+    ! flux(nz+1)= 0.
+
     DO i = 1, nz
-      dvar        = - (flux(i+1) - flux(i)) / dz(i) 
+      dvar        = - (flux(i+1) - flux(i)) !/ dz(i) 
       next_var(i) = var(i) + dvar * dt
-      IF ( next_var(i) .lt. 0. ) THEN !! mass conservation filter
-        CALL FAIL_MSG("ERROR :: dynamics, Physical quantity cannot be negative")
-      ENDIF
+      ! IF ( next_var(i) .lt. 0. ) THEN !! mass conservation filter
+      !   CALL FAIL_MSG("ERROR :: dynamics, Physical quantity cannot be negative")
+      ! ENDIF
     END DO
 
   END SUBROUTINE Sub_Finite_volume
 
   !----------------------------------------------!
-  SUBROUTINE Sub_Finite_volume_PPM    &
+  SUBROUTINE Sub_Finite_volume_PPM    &!{{{
              (                        &
                var, sfc_var,          &
                top_var,               &
@@ -246,7 +263,7 @@ MODULE Mod_dyn_driver
     var_left (2) = var_right(1) 
     var_right(nz-1) = var_left(nz) 
 
-    IF (.true.) THEN
+    IF (.false.) THEN
       ! limiters from Lin (2003), Equation 6 (relaxed constraint)
       DO k = 1, nz
         var_left (k) = var(k) - sign(min(abs(slp(k)),abs(var_left(k)-var(k))), slp(k) )
@@ -270,18 +287,18 @@ MODULE Mod_dyn_driver
     ENDIF
 
     ! compute fluxes at interfaces
-    ! flux(ks)   = w(ks)  *var(ks)/dz(1)
-    ! flux(ke+1) = w(ke+1)*var(ke)/dz(nz+1)
+    flux(ks)   = w(ks)  *sfc_var
+    flux(ke+1) = w(ke+1)*top_var
 
     ! B.C = 0. 
-    flux(ks)   = 0. 
-    flux(ke+1) = 0. 
-
-     c   = dt*w(1)/dz(1)
-     rst = (sfc_var + 0.5*slp(1)*(1.-c)) !/ dz(1)
-     flux(1) = w(ks)*rst 
-     rst = (top_var + 0.5*slp(nz)*(1.-c)) !/ dz(nz)
-     flux(ke+1) = w(ke+1)*rst
+    ! flux(ks)   = 0. 
+    ! flux(ke+1) = 0. 
+    !
+     ! c   = dt*w(1)/dz(1)
+     ! rst = (sfc_var + 0.5*slp(1)*(1.-c)) !/ dz(1)
+     ! flux(1) = w(ks)*rst 
+     ! rst = (top_var + 0.5*slp(nz)*(1.-c)) !/ dz(nz)
+     ! flux(ke+1) = w(ke+1)*rst
 
     ! Cal. flux
     tt = 2./3.
@@ -310,7 +327,7 @@ MODULE Mod_dyn_driver
         rm = var_right(kk) - var_left(kk)
         r6 = 6.0*(var(kk) - 0.5*(var_right(kk) + var_left(kk)))
         IF (kk == ks) r6 = 0.
-        rst = ( var_right(kk) - 0.5*xx*(rm - (1.0 - tt*xx)*r6) ) !/ dz(k-1)
+        rst = ( var_right(kk) - 0.5*xx*(rm - (1.0 - tt*xx)*r6) ) !/ dz(k)
          
         ! extension for Courant numbers > 1
         IF (cn > 1.) rst = (xx*rst + rsum)/cn
@@ -342,18 +359,18 @@ MODULE Mod_dyn_driver
         ! extension for Courant numbers > 1
         IF (cn > 1.) rst = (xx*rst + rsum)/cn
       ENDIF
-      flux(k) = w(k)*rst
+      flux(k) = w(k)*rst !/ dz(k)
     ENDDO
-
     ! Cal. FV
     DO i = 1, nz
-      dvar        = - (flux(i+1) - flux(i))/dz(i)
+       dvar        = - (flux(i+1) - flux(i)) / dz(i)
+      ! dvar        = - ((flux(i+1) - flux(i)) - &
+      !                 var(i)*(w(i+1)-w(i))) / dz(i)
       ! dvar        = - (flux(i+1)/dz(i+1) - flux(i)/dz(i))
       next_var(i) = var(i) + dvar * dt
-      ! IF ( next_var(i) .lt. 0. ) THEN !! mass conservation filter
-      !   print*, next_var(i), var(i), dvar, dt
-      !   CALL FAIL_MSG("ERROR :: dynamics, Physical quantity cannot be negative")
-      ! ENDIF
+      IF ( next_var(i) .lt. 0. ) THEN !! mass conservation filter
+
+      ENDIF
     END DO
 
   END SUBROUTINE Sub_Finite_volume_PPM
@@ -435,6 +452,6 @@ MODULE Mod_dyn_driver
       zwt(3,k) = dz(k)*num4*denom4*denom2      ! = 1/6 ''
     ENDDO
 
-   END SUBROUTINE Sub_cal_weights 
+   END SUBROUTINE Sub_cal_weights !}}}
 
 END MODULE Mod_dyn_driver

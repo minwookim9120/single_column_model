@@ -4,6 +4,8 @@ MODULE Mod_global
   IMPLICIT NONE
    
   INTEGER :: it, iz, itt   !! do parameter
+    REAL, DIMENSION(100) :: ddmm
+
 
     !! for namelist val
   INTEGER            :: integrated_time,    &
@@ -33,7 +35,10 @@ MODULE Mod_global
                         gamma_dry,          &
                         dzr,                &
                         drop_max_diameter,  &
-                        drop_min_diameter
+                        drop_min_diameter,  &
+                        nc,                 &
+                        qc,                 &
+                        r0
 
   INTEGER            :: aaa,bbb,ccc,ddd
 
@@ -45,11 +50,13 @@ MODULE Mod_global
                          input_name, &
                         output_path, &
                           drop_name, &
-                        output_name
+                        output_name, &
+                        phys_unit
 
  LOGICAL             :: ventilation_effect, &
                              phys_feedback, & 
-                        vertical_advection
+                        vertical_advection, &
+                         collision_effect
 
     ! Declare variables 
   REAL                                  :: dt, substep_dt
@@ -72,6 +79,8 @@ MODULE Mod_global
                                            ref_m,         & ! ref. mass range for bin           (drop_column_num)
                                            ref_mb,        & ! ref. boundary mass range for bin  (drop_column_num)
                                            ref_num,       & ! ref. number conc. for bin         (drop_column_num)
+                                           dr,            & ! dr = rb(i+1) - rb(i)              (drop_column_num)
+                                           S,            & ! dr = rb(i+1) - rb(i)              (drop_column_num)
                                            din              ! var from input data or prescribed (input_nz)
     REAL, DIMENSION(:,:),   ALLOCATABLE :: dout,          & ! output                            (nz, nt)
                                            r,             & ! drop radius                       (nz, drop_column_num)
@@ -82,6 +91,7 @@ MODULE Mod_global
                                            next_num,      & ! next var in bin array             (nz, drop_column_num)
                                            dm_dt,         & ! dm/dt                             (nz, drop_column_num)
                                            dmb,           & ! dmb                               (nz, drop_column_num)
+                                           S_out,             & ! dmb                               (nz, drop_column_num)
                                            dmb_dt           ! dmb/dt                            (nz, drop_column_num + 1)
     REAL, DIMENSION(:,:,:), ALLOCATABLE :: drop_dout,     & ! output                            (nz, drop_column_num, nt) 
                                            mass_dout,     &
@@ -108,11 +118,14 @@ MODULE Mod_global
   
 
   INTEGER,            PARAMETER :: dim1     = 1,               &
+                                   dim2     = 2,               &
                                    dim4     = 4
   
-  INTEGER, DIMENSION(dim1)      :: dimid1
+  INTEGER, DIMENSION(dim1)      :: dimid1, dimid11
+  INTEGER, DIMENSION(dim2)      :: dimid2
   INTEGER, DIMENSION(dim4)      :: dimid4
   INTEGER, DIMENSION(dim1)      :: dim1_start, dim1_count
+  INTEGER, DIMENSION(dim2)      :: dim2_start, dim2_count
   INTEGER, DIMENSION(dim4)      :: dim4_start, dim4_count
   
   CHARACTER(LEN=256), PARAMETER :: des      = "description"
@@ -150,9 +163,11 @@ MODULE Mod_global
 
     IF (.NOT. ALLOCATED(drop%r        )) ALLOCATE(drop%r        (nz, drop_column_num))
     IF (.NOT. ALLOCATED(drop%m        )) ALLOCATE(drop%m        (nz, drop_column_num))
+    IF (.NOT. ALLOCATED(drop%dr       )) ALLOCATE(drop%dr       (    drop_column_num))
     IF (.NOT. ALLOCATED(drop%ref_m    )) ALLOCATE(drop%ref_m    (    drop_column_num))
     IF (.NOT. ALLOCATED(drop%ref_mb   )) ALLOCATE(drop%ref_mb   (    drop_column_num))
     IF (.NOT. ALLOCATED(drop%dm_dt    )) ALLOCATE(drop%dm_dt    (nz, drop_column_num))
+
 
     IF (.NOT. ALLOCATED(drop%rb       )) ALLOCATE(drop%rb      (nz, drop_column_num+1))
     IF (.NOT. ALLOCATED(drop%mb       )) ALLOCATE(drop%mb      (nz, drop_column_num+1))
@@ -167,6 +182,9 @@ MODULE Mod_global
     IF (.NOT. ALLOCATED(Temp%sfc_dt  )) ALLOCATE(Temp%sfc_dt       (nt))
     IF (.NOT. ALLOCATED(Temp%top_dt  )) ALLOCATE(Temp%top_dt       (nt))
     IF (.NOT. ALLOCATED(Temp%dout    )) ALLOCATE(Temp%dout    (nz,nt+1))
+
+    IF (.NOT. ALLOCATED(drop%S        )) ALLOCATE(drop%S        (nz))
+    IF (.NOT. ALLOCATED(drop%S_out    )) ALLOCATE(drop%S_out    (nz,nt+1))
 
     IF (.NOT. ALLOCATED(q%sfc_dt     )) ALLOCATE(q%sfc_dt          (nt))
     IF (.NOT. ALLOCATED(q%top_dt     )) ALLOCATE(q%top_dt          (nt))

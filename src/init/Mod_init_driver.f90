@@ -46,9 +46,9 @@ MODULE Mod_init_driver
         CALL Sub_real_init                        &
              (                                    &
               read_pres, read_psfc, read_temp,    &
-              z%dz, input_nz, nz, Ps,             &
-              q%din, temp%din, z%din,  w%din,     &
-              q%dz,  temp%dz,  p%dz,    w%dz      &
+              z%dz, input_nz, nz, Ps, sfc_t,      &
+              q%din, temp%din, z%din,    &
+              q%dz,  temp%dz,  p%dz     &
              )
       ELSE IF ( incase == 3 ) THEN
         CALL Sub_read_txt_file                &
@@ -63,15 +63,16 @@ MODULE Mod_init_driver
         ALLOCATE(w%din(input_nz))
         w%din = 0.
 
+
         CALL Sub_real_init                        &
              (                                    &
               read_pres, read_psfc, read_temp,    &
-              z%dz, input_nz, nz, sfc_p,          &
-              q%din, temp%din, z%din,  w%din,     &
-              q%dz,  temp%dz,  p%dz,    w%dz      &
+              z%dz, input_nz, nz, sfc_p, sfc_t,   &
+              q%din, temp%din, z%din,      &
+              q%dz,  temp%dz,  p%dz       &
              )
       ENDIF
-      w%dz(:) = 0.2
+      w%dz(:) = 0.5
 
       ! open(unit = 111, file = 'r.bin', status = "unknown", &
       !       access="direct", form="unformatted", recl=100*4) 
@@ -112,35 +113,31 @@ MODULE Mod_init_driver
               drop_min_diameter,           &
               drop_max_diameter,           &
               drop%num(iz,:),              &
-              drop%r(iz,:), drop%rb(iz,:), & 
+              drop%r(iz,:), drop%rb(iz,:), &
+              drop%dr,                     & 
               drop%m(iz,:), drop%mb(iz,:)  &
              ) 
       ENDDO
-
-      !drop%r (2:nz,:) = 0.
-      !drop%rb(2:nz,:) = 0.
-      !drop%m (2:nz,:) = 0.
-      !drop%mb(2:nz,:) = 0.
+      IF (vertical_advection == .TRUE.) drop%num(2:nz,:) = 0.
 
       write(*,*) "!== checking initial distribution"
       SELECT CASE(dist_option)
         CASE(1)
           ! Log-normal distribution
-          write(*,*) "gamma dist. in model (qc) =  ", sum(drop%m(1,:)*drop%num(1,:))
+          write(*,*) "gamma dist. in model (qc) =  ", sum(drop%m(1,:)*drop%num(1,:)*drop%dr(:))
           write(*,*) "gamma dist. const.   (qc) =  ", qc
-          write(*,*) "log-normal dist. in model (nc) =  ", sum(drop%num(1,:))
+          write(*,*) "log-normal dist. in model (nc) =  ", sum(drop%num(1,:)*drop%dr(:))
           write(*,*) "log-normal dist. const.   (nc) =  ", nc
-          write(*,*) "accuracy  = ", (sum(drop%num(1,:))/nc) * 100., "%"
+          write(*,*) "accuracy  = ", (sum(drop%num(1,:)*drop%dr(:))/nc) * 100., "%"
         CASE(2)
           ! Gamma distribution
-          write(*,*) "gamma dist. in model (qc) =  ", sum(drop%m(1,:)*drop%num(1,:))
+          write(*,*) "gamma dist. in model (qc) =  ", sum(drop%m(1,:)*drop%num(1,:)*drop%dr(:))
           write(*,*) "gamma dist. const.   (qc) =  ", qc
-          write(*,*) "gamma dist. in model (nc) =  ", sum(drop%num(1,:))
+          write(*,*) "gamma dist. in model (nc) =  ", sum(drop%num(1,:)*drop%dr(:))
           write(*,*) "gamma dist. const.   (nc) =  ", nc
-          write(*,*) "accuracy  = ", (sum(drop%num(1,:))/nc) * 100., "%"
+          write(*,*) "accuracy  = ", (sum(drop%num(1,:)*drop%dr(:))/nc) * 100., "%"
       END SELECT 
       write(*,*) "!==!==!==!=="
-
     END SUBROUTINE Sub_init_vars
 
     !!---------------------------------------------!!

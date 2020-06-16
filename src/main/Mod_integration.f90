@@ -23,9 +23,10 @@ MODULE Mod_integration
       ! defirne output 1st time variables.
       temp%dout(:,1)        = temp%dz(:)
       q%dout(:,1)           = q%dz(:)
+      drop%S_out(:,1)       = 0.
       DO iar = 1, drop_column_num
       DO iaz = 1, nz
-        drop%drop_dout(iar,iaz,1)  = drop%num(iaz,iar)
+        drop%drop_dout(iar,iaz,1)  = drop%num(iaz,iar)*drop%dr(iar)
       ENDDO
       ENDDO
       ! ref_m
@@ -34,22 +35,34 @@ MODULE Mod_integration
       drop%ref_num   = drop%num(1,:)
 
       DO it = 1, nt
+        ! print*, "============================" 
+        ! print*, it 
+        ! !print*, temp%dz
+        ! print*, "============================" 
         ! write(*,*)  it
         ! Compute dyn
+
+        IF (it >= 1200) w%stag_dz(:) = 0. 
+
+        Temp%dz = Temp%dz*((Ps/P%dz)**(Rd/cp))
+        Temp%sfc_dt(it) = Temp%sfc_dt(it)*((Ps/sfc_p)**(Rd/cp))
         CALL Sub_dyn_driver          ! in  : temp%dz, q%dz
                                      ! out : temp%next_dz, q%next_dz
 
         ! update temp. and q by dyn.
         temp%dz     = temp%next_dz
         q%dz        = q%next_dz
-        ! drop%num    = drop%next_num
+        IF (vertical_advection == .TRUE.)  drop%num    = drop%next_num
   
+        drop%num(1,:) = drop%ref_num(:)
+        !drop%m  (1,:) = drop%ref_m(:)
+
+        Temp%dz = Temp%dz*((P%dz/Ps)**(Rd/Cp))
         ! Compute phys
         CALL Sub_phys_driver         ! in  : temp%dz, q%dz, drop%num, RH
                                      ! out : temp%next_dz, q%next_dz, drop%next_num, RH 
-       drop%num(1,:) = drop%ref_num(:)
-       drop%m  (1,:) = drop%ref_m(:)
-
+        drop%num(1,:) = drop%ref_num(:)
+        ! drop%m  (1,:) = drop%ref_m(:)
         ! update temp. and q by phys.
         temp%dz = temp%next_dz
         q%dz    = q%next_dz
@@ -57,11 +70,13 @@ MODULE Mod_integration
         ! save output vars
         temp%dout(:,it+1)         = temp%dz(:)
         q%dout(:,it+1)            = q%dz(:) 
+        drop%S_out(:,it+1)        = drop%S(:) 
         DO iar = 1, drop_column_num
         DO iaz = 1, nz
-          drop%drop_dout(iar,iaz,it+1)  = drop%num(iaz,iar)
+          drop%drop_dout(iar,iaz,it+1)  = drop%num(iaz,iar)*drop%dr(iar)
         ENDDO
         ENDDO
+        ! write(*,*) sum(drop%num(2,:))
       ENDDO !! time do
 
     END SUBROUTINE Sub_Integration_time

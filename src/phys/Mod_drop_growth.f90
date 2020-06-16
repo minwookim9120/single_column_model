@@ -13,7 +13,7 @@ MODULE Mod_drop_growth
                (                      &
                 temp, qv, pres,       &
                 r, rb,                &
-                dm_dt, dmb_dt         &
+                dm_dt, dmb_dt, S      &
                )
 
       IMPLICIT NONE
@@ -22,22 +22,24 @@ MODULE Mod_drop_growth
       REAL, DIMENSION(drop_column_num),   INTENT(IN)  :: r
       REAL, DIMENSION(drop_column_num+1), INTENT(IN)  :: rb
       ! Local
-      REAL                               :: e, es, RH, S, Fk, Fd
+      REAL                               :: e, es, RH, Fk, Fd,q ,qs
       REAL, DIMENSION(drop_column_num)   :: Vf
       REAL, DIMENSION(drop_column_num+1) :: Vfb
       ! Out
       REAL, DIMENSION(drop_column_num),   INTENT(OUT) :: dm_dt
       REAL, DIMENSION(drop_column_num+1), INTENT(OUT) :: dmb_dt
+      REAL,                               INTENT(OUT) :: S      
       INTEGER :: iq
 
       CALL es_Fk_Fd(temp,pres,es,Fk,Fd) 
-      
+ 
       e     = pres * qv/0.622      ! vapor pressure       [hPa]
       RH    = (e/es)               ! Relative humidity    
 
-      ! S     = RH - 1               ! For test
+      S     = RH - 1               ! For test
+      ! S     = 0.01               ! For test
 
-     S     = 0.01               ! For test
+      ! write(*,*) es, e, S 
 
       Vf = 1.; Vfb = 1.
       IF (ventilation_effect) THEN
@@ -64,7 +66,7 @@ MODULE Mod_drop_growth
       es = 6.112 * exp(( 17.67*(temp-273.15) )/( (temp-273.15)+243.5 ))
 
       Fk = ((L/(Rv*temp))-1.)*(L/(Ka*temp))
-      Fd = (Rv*temp) / ((Dv*es*100))
+      Fd = ( Rv*temp ) / ( (Dv*(1000./Pres)) * (es*100.) )
 
     END SUBROUTINE es_Fk_Fd!}}}
 
@@ -362,16 +364,22 @@ MODULE Mod_drop_growth
       ! ELSE
       !   CALL FAIL_MSG("check compute reynols number")
       END IF
+
+      WHERE (Vf .gt. 5.0)
+       VF = 5.0
+      END WHERE
+
       
     END SUBROUTINE ventilation !}}}
 
     !== !== !==
-    SUBROUTINE compute_redist     &!{{{
+    SUBROUTINE compute_redist     &!{{{za
                (                  &
                 ref_m, next_m,    &
                 ref_mb, next_mb,  & 
                 dm_dt, dmb_dt,    & 
-                dt, nr, next_nr   &  
+                dt, dr,           &
+                nr, next_nr   &  
                )
 
       IMPLICIT NONE
@@ -379,8 +387,9 @@ MODULE Mod_drop_growth
       REAL,                               INTENT(IN)  :: dt                    
       REAL, DIMENSION(drop_column_num),   INTENT(IN)  :: ref_m,        & ! const. mass (1st mass) 
                                                          next_m,       & ! after added dm/dt 
-                                                         dm_dt,         &
-                                                         nr            
+                                                         dm_dt,        &
+                                                         nr,           &          
+                                                         dr 
       REAL, DIMENSION(drop_column_num+1), INTENT(IN)  :: ref_mb,       & ! const. b. mass (1st b. mass) 
                                                          next_mb,      & ! after added dmb/dt 
                                                          dmb_dt
@@ -393,13 +402,18 @@ MODULE Mod_drop_growth
       ! Out
       REAL, DIMENSION(drop_column_num),   INTENT(OUT) :: next_nr      
       
-      DO izz = 1, nz
+      DO izz = 1, drop_column_num
         dm(izz) = ref_mb(izz+1)-ref_mb(izz)
       ENDDO
 
+      local_nr = nr!/(dr*2)  !! local_nr = nr -> nr/dr by han
       SELECT CASE (redist_option)
         CASE (1) ! reassign
-          CALL reassign(nr, ref_m, next_m, next_nr)
+          local_nr=local_nr*drop%dr
+          CALL reassign(local_nr, ref_m, next_m, next_nr)
+          ! CALL redistribution( ref_m, dm_dt, local_nr, next_nr ) 
+
+          next_nr=next_nr/drop%dr
         CASE (2) ! PPM
           WHERE (dmb_dt /= 0.)
             CFL_substep = courant_number*(dm/abs(dm_dt))
@@ -407,27 +421,23 @@ MODULE Mod_drop_growth
             CFL_substep = MAXVAL(CFL_substep)
           END WHERE
           substep_dt = MINVAL(CFL_substep)      ; IF (substep_dt == 0) substep_dt = 1
-          substep_dt = 0.01                     ; IF (substep_dt == 0) substep_dt = 0.01
+          substep_dt = 0.01                      ; IF (substep_dt == 0) substep_dt = 0.01
           substep_nt = INT(dt/substep_dt)       ; IF (substep_nt == 0) substep_nt = 1
-        
-          local_nr = nr
+
+!           write(*,*) dmb_dt
+!           write(*,*) dm
+! stop
           ddmb_dt = dmb_dt
           ! ddmb_dt(drop_column_num+1) = 0.
           IF ( dt >= substep_dt ) THEN
             DO itt = 1, substep_nt
-              CALL Sub_Finite_volume_PPM ( local_nr, 0.,                      &
-                                           0.,                                &
-                                           dm, drop_column_num, CFL_substep,  &
-                                           substep_dt,                        &
-                                           dmb_dt,                            &
-                                           next_nr                            &
-                                                                             ) 
-              !     write(*,*) "dm =", dm
-              !     write(*,*) "dt =", dt
-              !     write(*,*) "drop_column_num =", drop_column_num
-              !     write(*,*) "CFL_substep =", substep_dt*dm_dt/dm
-              !     write(*,*) "dmb_dt =", dmb_dt
-              !     write(*,*) "nr =", nr
+              CALL Sub_Finite_volume_PPM_forphy ( substep_dt, dmb_dt, dm, local_nr, next_nr )
+                  ! write(*,*) "dm =", dm
+                  ! write(*,*) "dt =", dt
+                  ! write(*,*) "drop_column_num =", drop_column_num
+                  ! write(*,*) "CFL_substep =", substep_dt*dm_dt/dm
+                  ! write(*,*) "dmb_dt =", dmb_dt
+                  ! write(*,*) "nr =", nr
               !     write(*,*) "nr =", sum(nr)
               ! !     write(*,*) "next_nr =", next_nr
               !     write(*,*) "next_nr =", sum(next_nr)
@@ -435,13 +445,7 @@ MODULE Mod_drop_growth
               local_nr=next_nr
             ENDDO
           ELSE
-            CALL Sub_Finite_volume_PPM ( nr, 0.,                            &
-                                         0.,                                &
-                                         dm, drop_column_num, CFL_substep,  &
-                                         dt,                                &
-                                         dmb_dt,                            &
-                                         next_nr                            &
-                                                                           )
+            CALL Sub_Finite_volume_PPM_forphy ( dt, dmb_dt, dm, nr, next_nr )
                   ! write(*,*) "dm =", dm
                   ! write(*,*) "dt =", dt
                   ! write(*,*) "drop_column_num =", drop_column_num
@@ -453,10 +457,60 @@ MODULE Mod_drop_growth
         CASE DEFAULT
           CALL FAIL_MSG("phys redistribution error")
       END SELECT
+!      next_nr = next_nr*2*dr !!2020.06.03 by han
                   ! write(*,*) "next_nr =", sum(next_nr)
                   ! stop
 
     END SUBROUTINE compute_redist!}}}
+
+    subroutine redistribution( mass, dm_dt, Nr, next_n ) !{{{
+        implicit none
+        real, dimension(:) ,intent(in)    :: mass
+        real, dimension(:) ,intent(in)    :: dm_dt
+        real, dimension(:) ,intent(in) :: Nr
+
+        integer                   :: i, j, nbin
+        real, dimension(size(Nr)),intent(out) :: next_N
+        real, dimension(size(Nr)) :: x, y
+        real, dimension(size(mass)) :: next_m
+
+        next_m = mass + dm_dt*dt
+
+        nbin = size(Nr)
+        y    = 0.
+        ! next_N = 0.
+
+        do i = 1, nbin-1
+            ! print*,
+            ! "i=",i,"mass(i)=",mass(i),"next_m(i)",next_m(i),"mass(i+1)=",mass(i+1)
+            if ( next_m(i) <= 0. ) then
+                next_N(i) = 0.
+            else
+                do j = 1, nbin-1
+                    if ( mass(j) < next_m(i) ) then
+                        if ( mass(j+1) > next_m(i) ) then
+                            x(i)      = ( Nr(i)*(next_m(i)-mass(j+1)) ) &
+                                      / (          mass(j)-mass(j+1) )
+                            y(i+1)    = Nr(i) - x(i)
+                            next_N(i) = x(i) + y(i)
+                            exit
+                        end if
+                    end if
+                end do
+            end if
+            ! print*,"i=",i,"Nr(i)=",Nr(i),"x=",x(i),"y=",y(i),"next_N(i)=",next_N(i)
+            ! print*, mass(i),mass(i+1),next_N(i)
+        end do
+        next_N(nbin) = Nr(nbin)+y(nbin)
+
+        ! print*, "TODO! redistribution"
+        ! print*, "     Porting from ncl code... (+
+        ! doc/redistribution/reassign.ncl)"
+        ! stop
+
+        ! Nr = next_N
+
+    end subroutine redistribution   !}}}
 
     !== !== !==
     SUBROUTINE reassign(nr, ref_m, next_m, next_nr)!{{{
@@ -468,6 +522,8 @@ MODULE Mod_drop_growth
       INTEGER                                       :: im, inext_m
       REAL                                          :: x, y,        &
                                                        N, NM
+      REAL                                          :: int_x, int_y
+      REAL                                          :: e_x, e_y     
       ! Out
       REAL, DIMENSION(drop_column_num), INTENT(OUT) :: next_nr
 
@@ -485,17 +541,492 @@ MODULE Mod_drop_growth
             x  = (NM - (ref_m(im+1) * N)) / (ref_m(im)-ref_m(im+1))
             y  = N - x 
 
+            int_x = AINT(x)
+            int_y = AINT(y)
+            e_x   = x - int_x
+            e_y   = y - int_y
+
+            IF (e_x >= e_y) THEN
+              x = x + e_y
+              y = int_y
+            ELSE IF (e_x < e_y) THEN
+              y = y + e_x
+              x = int_x
+            ENDIF
+
             next_nr(im)   = next_nr(im)   + x 
             next_nr(im+1) = next_nr(im+1) + y
+
+
 
           ENDIF
 
          ENDDO
        ENDDO
 
+
+
         !print*, next_nr
 !         write(*,*) sum(nr*ref_m)
 !         write(*,*) sum(next_nr*ref_m)
 
     END SUBROUTINE reassign!}}}
+
+
+    subroutine Sub_Finite_volume_PPM_forphy ( dt, w_half, dz, C, next_C )  ! {{{
+    !-- Input
+    ! dt     = length of time step
+    ! w_half = vertical velocity at half coordinate(nz+1)
+    ! nt     = size of time for iteration
+    ! dz     = depth of model layers
+    !
+    ! from namelist
+    ! dyn_adv_scheme = differencing scheme, use one of these values:
+    !  1: finite_difference = second-order centered finite difference
+    !  2: finite_volume     = finite volume method
+    !  3: PPM               = piecewise parabolic method
+    !                        See Colella and Woodward (1984)
+    !  4: PPM               = PPM but Lin (2003) limeter used
+    !
+    !-- Output
+    ! C = advected quantity
+    !
+    ! Note! Here, flux form is used for advection term
+    ! FLUX_FORM      = solves for -d(wr)/dt
+    ! ADVECTIVE_FORM = solves for -w*d(r)/dt
+    !
+    ! Here, we use Lorenz configuration
+    ! See Figure 1 in Holdaway et al., (2012) 
+    ! https://rmets.onlinelibrary.wiley.com/doi/epdf/10.1002/qj.2016
+
+    implicit none
+    real,               intent(in   ) :: dt
+    real, dimension(:), intent(in   ) :: w_half
+    real, dimension(:), intent(in   ) :: dz
+    real, dimension(:), intent(in   ) :: C
+    real, dimension(:), intent(out)   :: next_C
+
+    integer :: k, kk
+    integer :: ks, ke, kstart, kend
+    real    :: wgt   ! weight dz
+    real    :: Cwgt  ! weight variable
+    real    :: dC_dt, zbottom = 0.
+    real    :: tt, cn, Csum, dzsum, dtw
+    real    :: xx, a, b, Cm, C6, Cst, Cdt
+    real, dimension(0:3,size(C)) :: zwt
+    real, dimension(size(C))     :: slp, C_left, C_right
+    real, dimension(size(C))     :: slope
+    real, dimension(size(C)+1)   :: flux
+    character(len=20)       :: eqn_form = "FLUX_FORM"
+    ! character(len=20)       :: eqn_form = "ADVECTIVE_FORM"
+    logical :: linear, test_1
+    logical :: do_outflow_bnd = .true.
+
+    ! set default values for optional arguments
+    ! if (phy_adv_scheme == 1) do_outflow_bnd = .false.
+
+    ! vertical indexing
+    ks = 1;  ke = size(C)
+
+    ! start and end indexing for finite volume fluxex
+    kstart = ks+1; kend = ke
+    if (do_outflow_bnd) then
+        kstart = ks;  kend = ke+1
+    end if
+
+    ! Make stagged grid for advection
+    if ( size(w_half) /= size(C)+1 )then
+        call fail_msg("vertical dimension of input arrays inconsistent")
+    end if
+
+    ! Set Boundary Condition (Homogeneous Dirichlet BC)
+    ! most likely w = 0 at these points
+    if (do_outflow_bnd) then
+        flux(ks)   = 0.
+        flux(ke+1) = 0.
+    else
+        flux(ks)   = w_half(ks)*C(ks)
+        flux(ke+1) = w_half(ke+1)*C(ke)
+    end if
+
+
+        ! 3) Piecewise Parabolic Method, Colella and Woodward (1984) {{{
+            zwt = 0 ! Note! Avoid for Nan value occur
+            call compute_weights(dz, zwt)
+            call slope_z(C, dz, slp, linear=.false.)        ! Equation 1.7
+            do k = ks+2, ke-1
+                C_left(k) = C(k-1) + zwt(1,k)*(C(k)-C(k-1)) &
+                                   - zwt(2,k)*slp(k)        &
+                                   + zwt(3,k)*slp(k-1)      ! Equation 1.6 
+                C_right(k-1) = C_left(k)
+                ! Or, we can use Equation 1.9 (Need condition)
+                ! C_rihgt(k) = (7./12.)*(a(k)+a(k+1)) - (1./12.)*(a(k+2)+a(k-1))
+                ! coming out of this loop, all we need is r_left and r_right
+            enddo
+
+            ! boundary values  ! masks ???????
+            C_left (ks+1) = C(ks+1) - 0.5*slp(ks+1)
+            C_right(ke-1) = C(ke-1) + 0.5*slp(ke-1)
+
+            ! pure upstream advection near boundary
+            ! r_left (ks) = r(ks)
+            ! r_right(ks) = r(ks)
+            ! r_left (ke) = r(ke)
+            ! r_right(ke) = r(ke)
+
+            ! make linear assumption near boundary
+            ! NOTE: slope is zero at ks and ks therefore
+            !       this reduces to upstream advection near boundary
+            C_left (ks) = C(ks) - 0.5*slp(ks)
+            C_right(ks) = C(ks) + 0.5*slp(ks)
+            C_left (ke) = C(ke) - 0.5*slp(ke)
+            C_right(ke) = C(ke) + 0.5*slp(ke)
+
+                ! limiters from Lin (2003), Equation 6 (relaxed constraint)
+                do k = ks, ke
+                C_left (k) = C(k) - sign( min(abs(slp(k)),       &
+                                          abs(C_left (k)-C(k))), &
+                                          slp(k) )  ! (B3)
+                C_right(k) = C(k) + sign( min(abs(slp(k)),       &
+                                          abs(C_right(k)-C(k))), &
+                                          slp(k) )  ! (B4)
+                enddo
+
+            ! compute fluxes at interfaces {{{
+            tt = 2./3.
+            do k = kstart, kend ! ks+1, nz
+                if (w_half(k) >= 0.) then ! w = positive
+                    if (k == ks) cycle    ! inflow
+                        cn = dt*w_half(k)/dz(k-1)   ! Courant number
+                        kk = k-1
+                    ! extension for Courant numbers > 1
+                    if (cn > 1.) then
+                        Csum = 0.; dzsum = 0.
+                        dtw  = dt*w_half(k)
+                        do while (dzsum+dz(kk) < dtw)
+                            if (kk == 1) exit
+                            dzsum = dzsum + dz(kk)
+                            Csum  =  Csum +  C(kk)
+                            kk    =    kk -1
+                        enddo
+                        xx = (dtw-dzsum)/dz(kk)
+                    else
+                        xx = cn     ! y = u*dt (1.13)
+                    endif
+                    Cm = C_right(kk) - C_left(kk)
+                    C6 = 6.0*(C(kk) - 0.5*(C_right(kk) + C_left(kk)))   ! (1.5)
+                    if (kk == ks) C6 = 0.
+                    Cst = C_right(kk) - 0.5*xx*(Cm - (1.0 - tt*xx)*C6)  ! (1.12)
+                    ! extension for Courant numbers > 1
+                    if (cn > 1.) Cst = (xx*Cst + Csum)/cn
+                else                      ! w = negative
+                    if (k == ke+1) cycle  ! inflow
+                    cn = - dt*w_half(k)/dz(k)
+                    kk = k
+                    ! extension for Courant numbers > 1
+                    if (cn > 1.) then
+                        Csum = 0.; dzsum = 0.
+                        dtw  = -dt*w_half(k)
+                        do while (dzsum+dz(kk) < dtw)
+                            if (kk == ks) exit
+                            dzsum = dzsum + dz(kk)
+                            Csum  =  Csum +  C(kk)
+                            kk    =    kk + 1
+                        enddo
+                        xx = (dtw-dzsum)/dz(kk)
+                    else
+                        xx = cn
+                    endif
+                    Cm = C_right(kk) - C_left(kk)
+                    C6 = 6.0*(C(kk) - 0.5*(C_right(kk) + C_left(kk)))
+                    if (kk == ke) C6 = 0.
+                    Cst = C_left(kk) + 0.5*xx*(Cm + (1.0 - tt*xx)*C6)
+                    ! extension for Courant numbers > 1
+                    if (cn > 1.) Cst = (xx*Cst + Csum)/cn
+                endif
+                flux(k) = w_half(k)*Cst
+                ! if (xx > 1.) cflerr = cflerr+1
+                ! cflmaxx = max(cflmaxx,xx)
+                ! cflmaxc = max(cflmaxc,cn)
+                ! }}}
+            enddo ! }}}
+    ! vertical advective tendency
+    select case (eqn_form)
+        case ("FLUX_FORM")
+            do k = ks, ke
+                 dC_dt     = - ( flux(k+1) - flux(k) ) / dz(k)
+                !dC_dt     = - ( flux(k+1)/dz(k+1) - flux(k)/dz(k) )
+                next_C(k) = C(k) + dC_dt * dt
+            end do
+        case ("ADVECTIVE_FORM")
+            do k = ks, ke
+                dC_dt     = - ( flux(k+1) - flux(k) - &
+                                C(k)*(w_half(k+1)-w_half(k)) ) / dz(k)
+                next_C(k) = C(k) + dC_dt * dt
+            end do
+        case default
+            call fail_msg("No setup physics equation form.")
+    end select
+
+    end subroutine Sub_Finite_volume_PPM_forphy  ! }}}
+
+    subroutine slope_z(C, dz, slope, limit, linear) ! {{{
+    real, dimension(:), intent(in)  :: C, dz
+    real, dimension(:), intent(out) :: slope
+    logical,  optional, intent(in)  :: limit, linear
+
+    integer :: k, n
+    real    :: grad(2:size(C))
+    real    :: Cmin, Cmax
+    logical :: limiters = .true.
+    logical :: dolinear = .true.
+
+    if (present( limit)) limiters = limit
+    if (present(linear)) dolinear = linear
+
+    n = size(C)
+
+    ! compute slope (weighted for unequal levels)
+    do k = 2, n
+        grad(k) = (C(k)-C(k-1))/(dz(k)+dz(k-1))
+    enddo
+    if (dolinear) then
+        do k = 2, n-1
+            slope(k) = (grad(k+1)+grad(k))*dz(k)
+        enddo
+    else
+        do k = 2, n-1
+            slope(k) = ( grad(k+1)*(2.*dz(k-1)+dz(k)) + &   ! Equation 1.7
+                         grad(k  )*(2.*dz(k+1)+dz(k)) ) * dz(k) &
+                     / (   dz(k-1) + dz(k) + dz(k+1)  )
+        enddo
+    endif
+    slope(1) = 2.*grad(2)*dz(1)
+    slope(n) = 2.*grad(n)*dz(n)
+
+    ! apply limiters to slope
+    if (limiters) then
+        do k = 1, n
+            if (k >= 2 .and. k <= n-1) then
+                Cmin = min(C(k-1), C(k), C(k+1))
+                Cmax = max(C(k-1), C(k), C(k+1))
+                slope(k) = sign(1.,slope(k)) *  &
+                            min( abs(slope(k)), &
+                                2.*(C(k)-Cmin), &
+                                2.*(Cmax-C(k))  )   ! Equation 1.8
+            else
+                slope(k) = 0.  ! always slope=0
+            endif
+        enddo
+    endif
+
+    end subroutine slope_z  ! }}}
+
+    subroutine compute_weights(dz, zwt) ! {{{
+    real, intent(in),  dimension(:)            :: dz
+    real, intent(out), dimension(0:3,size(dz)) :: zwt
+    real    :: denom1, denom2, denom3, denom4, num3, num4, x, y
+    integer :: k
+
+    do k = 3, size(dz)-1
+        denom1 = 1.0/(  dz(k-1) +   dz(k))
+        denom2 = 1.0/(  dz(k-2) +   dz(k-1) + dz(k) + dz(k+1))
+        denom3 = 1.0/(2*dz(k-1) +   dz(k))  
+        denom4 = 1.0/(  dz(k-1) + 2*dz(k))  
+        num3   = dz(k-2) + dz(k-1)          
+        num4   = dz(k)   + dz(k+1)        
+        x      = num3*denom3 - num4*denom4        
+        y      = 2.0*dz(k-1)*dz(k)  ! everything up to this point is just
+                                    ! needed to compute x1,x1,x3                      
+        zwt(0,k) = dz(k-1)*denom1               ! = 1/2 in equally spaced case
+        zwt(1,k) = zwt(0,k) + x*y*denom1*denom2 ! = 1/2 in equally spaced case
+        zwt(2,k) = dz(k-1)*num3*denom3*denom2   ! = 1/6 ''
+        zwt(3,k) = dz(k)*num4*denom4*denom2     ! = 1/6 ''
+    enddo
+
+    end subroutine compute_weights  ! }}}
+
+!     !== !== !==
+! !   SUBROUTINE Sub_Finite_volume_PPM_forphy    &!{{{
+! !              (                        &
+! !                var, sfc_var,          &
+! !                top_var,               &
+! !                dz, nz, CFL,           &
+! !                dt,                    &
+! !                w,                     &
+! !                next_var               &
+! !              ) 
+! !
+! !
+! !
+! !     INTEGER,                    INTENT(IN) :: nz
+! !     REAL,                       INTENT(IN) :: dt
+! !     REAL,    DIMENSION(:),      INTENT(IN) :: dz, var
+! !     REAL,    DIMENSION(1:nz+1), INTENT(IN) :: w
+! !     REAL,    DIMENSION(nz),     INTENT(IN) :: CFL                                   
+! !     REAL,    DIMENSION(nz)                 :: next_var
+! !     REAL,    DIMENSION(nz)                 :: slp,                               & 
+! !                                               var_left, var_right
+! !     REAL,    DIMENSION(nz+1)               :: flux
+! !     REAL,    DIMENSION(0:3,nz)             :: zwt
+! !     REAL                                   :: xx, a, b, rm, r6, rst, wt
+! !     REAL                                   :: tt, c1, c2
+! !     REAL                                   :: sfc_var, top_var 
+! !     LOGICAL                                :: test_1
+! !     INTEGER                                :: i, j, k, ks, ke
+! !     REAL                                   :: cn, rsum, dzsum, dtw
+! !     REAL                                   :: cflerr, cflmaxx, cflmax, cflmaxcc
+! !     REAL                                   :: dvar, c
+! !     INTEGER                                :: kk
+! !
+! !     ke=nz
+! !     ks=1
+! !
+! !     Call Sub_cal_weights ( dz, zwt )
+! !     CALL Sub_cal_slope ( var, dz, nz, slp )
+! !
+! !     DO k = 3, nz-1
+! !       var_left(k) = var(k-1) + zwt(1,k)*(var(k)-var(k-1)) &
+! !                        - zwt(2,k)*slp(k) + zwt(3,k)*slp(k-1)
+! !       var_right(k-1) = var_left(k)
+! !     ENDDO
+! !    
+! !    ! boundary values  
+! !     var_left (1) = var(1) - 0.5*slp(1)
+! !     var_right(1) = var(1) + 0.5*slp(1)
+! !     var_left (nz) = var(nz) - 0.5*slp(nz)
+! !     var_right(nz) = var(nz) + 0.5*slp(nz)
+! !
+! !     ! make linear assumption near boundary
+! !     ! var_left (2) = var(2) - 0.5*slp(2)
+! !     ! var_right(nz-1) = var(nz-1) + 0.5*slp(nz-1)
+! !     var_left (2) = var_right(1) 
+! !     var_right(nz-1) = var_left(nz) 
+! !
+! !     IF (.false.) THEN
+! !       ! limiters from Lin (2003), Equation 6 (relaxed constraint)
+! !       DO k = 1, nz
+! !         var_left (k) = var(k) - sign(min(abs(slp(k)),abs(var_left(k)-var(k))), slp(k) )
+! !         var_right(k) = var(k) + sign(min(abs(slp(k)),abs(var_right(k)-var(k))), slp(k) )
+! !       ENDDO
+! !     ELSE
+! !       ! limiters from Colella and Woodward (1984), Equation 1.10
+! !       DO k = ks, ke
+! !         test_1 = (var_right(k)-var(k))*(var(k)-var_left(k)) <= 0.0
+! !         IF (test_1) THEN
+! !           var_left(k)  = var(k)
+! !           var_right(k) = var(k)
+! !         ENDIF
+! !         IF (k == ks .or. k == ke) CYCLE
+! !           rm = var_right(k) - var_left(k)
+! !           a = rm*(var(k) - 0.5*(var_right(k) + var_left(k)))
+! !           b = rm*rm/6.
+! !         IF (a >  b) var_left (k) = 3.0*var(k) - 2.0*var_right(k)
+! !         IF (a < -b) var_right(k) = 3.0*var(k) - 2.0*var_left (k)
+! !       ENDDO
+! !     ENDIF
+! !
+! !     ! compute fluxes at interfaces
+! !     ! flux(ks)   = w(ks)  *var(ks)/dz(1)
+! !     ! flux(ke+1) = w(ke+1)*var(ke)/dz(nz+1)
+! !     !
+! !     ! B.C = 0. 
+! !     ! flux(ks)   = 0. 
+! !     ! flux(ke+1) = 0. 
+! !     !
+! !      c   = dt*w(1)/dz(1)
+! !      rst = (sfc_var + 0.5*slp(1)*(1.-c)) !/ dz(1)
+! !      flux(1) = w(ks)*rst 
+! !      rst = (top_var + 0.5*slp(nz)*(1.-c)) !/ dz(nz)
+! !      flux(ke+1) = w(ke+1)*rst
+! !
+! !     ! Cal. flux
+! !     tt = 2./3.
+! !     DO k = 1, nz+1
+! !       IF (w(k) >= 0.) THEN
+! !         IF (k == ks) CYCLE ! inflow
+! !         cn = dt*w(k)/dz(k-1)
+! !         kk = k-1
+! !         ! extension for Courant numbers > 1
+! !         IF (cn > 1.) THEN
+! !           rsum = 0.
+! !           dzsum = 0.
+! !           dtw = dt*w(k)
+! !           DO WHILE (dzsum+dz(kk) < dtw)
+! !             IF (kk == 1) THEN
+! !               exit
+! !             ENDIF
+! !             dzsum = dzsum + dz(kk)
+! !              rsum =  rsum +  var(kk)
+! !             kk = kk-1
+! !             ! write(*,*) KK
+! !             ! stop
+! !           ENDDO
+! !           xx = (dtw-dzsum)/dz(kk)
+! !         ELSE
+! !           xx = cn
+! !         ENDIF
+! !         rm = var_right(kk) - var_left(kk)
+! !         r6 = 6.0*(var(kk) - 0.5*(var_right(kk) + var_left(kk)))
+! !         IF (kk == ks) r6 = 0.
+! !         rst = ( var_right(kk) - 0.5*xx*(rm - (1.0 - tt*xx)*r6) ) !/ dz(k)
+! !          
+! !         ! extension for Courant numbers > 1
+! !         IF (cn > 1.) rst = (xx*rst + rsum)/cn
+! !         ! write(*,*) kk
+! !         ! write(*,*) rst
+! !         ! write(*,*) var_right(kk)
+! !         
+! !       ELSE
+! !         IF (k == ke+1) CYCLE ! inflow
+! !         cn = - dt*w(k)/dz(k)
+! !         kk = k
+! !         ! extension for Courant numbers > 1
+! !         IF (cn > 1.) THEN
+! !           rsum = 0.
+! !           dzsum = 0.
+! !           dtw = -dt*w(k)
+! !           DO WHILE (dzsum+dz(kk) < dtw)
+! !             IF (kk == ks) THEN
+! !               EXIT
+! !             ENDIF
+! !             dzsum = dzsum + dz(kk)
+! !              rsum =  rsum + var(kk)
+! !             kk = kk+1
+! !           ENDDO
+! !           xx = (dtw-dzsum)/dz(kk)
+! !         ELSE
+! !           xx = cn
+! !         ENDIF
+! !         rm = var_right(kk) - var_left(kk)
+! !         r6 = 6.0*(var(kk) - 0.5*(var_right(kk) + var_left(kk)))
+! !         IF (kk == ke) r6 = 0.
+! !         rst = ( var_left(kk) + 0.5*xx*(rm + (1.0 - tt*xx)*r6) ) !/ dz(k)
+! !         ! extension for Courant numbers > 1
+! !         IF (cn > 1.) rst = (xx*rst + rsum)/cn
+! !       ENDIF
+! !       flux(k) = w(k)*rst !/ dz(k)
+! !       write(*,*) k
+! !       write(*,*) flux(k)
+! !     ENDDO
+! !     ! write(*,*) var_right
+! !     ! write(*,*) w
+! !
+! !     ! stop   
+! !    ! flux(ks)   = 0. 
+! !    ! flux(ke+1) = 0.
+! !    ! Cal. FV
+! !     DO i = 1, nz
+! !        dvar        = - (flux(i+1) - flux(i)) / dz(i)
+! !       ! dvar        = - ((flux(i+1) - flux(i)) - &
+! !       !                 var(i)*(w(i+1)-w(i))) / dz(i)
+! !       ! dvar        = - (flux(i+1)/dz(i+1) - flux(i)/dz(i))
+! !       next_var(i) = var(i) + dvar * dt
+! !       IF ( next_var(i) .lt. 0. ) THEN !! mass conservation filter
+! !         CALL FAIL_MSG("problem : phys ppm")
+! !       ENDIF
+! !     END DO
+! !
+! !   END SUBROUTINE Sub_Finite_volume_PPM_forphy
+! !
 END MODULE Mod_drop_growth 
