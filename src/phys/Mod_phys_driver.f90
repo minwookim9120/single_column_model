@@ -12,40 +12,55 @@ MODULE Mod_phys_driver
   SUBROUTINE Sub_phys_driver
 
   IMPLICIT NONE
-  INTEGER :: i_m, ittt
+  INTEGER :: i_m, itt
   INTEGER :: iz
   REAL    :: dtotal_m, dqv, dtemp, sub_dt, sub_nt  
   REAL,dimension(nz)    :: qc 
+  INTEGER :: substep_nt
+  REAL    :: substep_dt
+  REAL,DIMENSION(drop_column_num) :: local_nr
+
+  substep_dt=0.2
+  substep_nt=int(dt/substep_dt)
     ! sub_dt=0.01
     !
     ! sub_nt=dt/sub_dt
     DO iz = 1, nz 
       ! do ittt = 1, sub_nt     
       ! condensation and evaporation
-      CALL compute_dmb_dt                        &
-           (                                     &
-            temp%dz(iz), q%dz(iz), p%dz(iz),     &
-            drop%r(iz,:), drop%rb(iz,:), &
-            drop%dm_dt(iz,:), drop%dmb_dt(iz,:), drop%S(iz)  &
-           ) 
+        local_nr(:)=drop%num(iz,:)
+      Do itt = 1, substep_nt
 
-      drop%m(iz,:)  = drop%ref_m(:)  + drop%dm_dt(iz,:)*dt
-      drop%mb(iz,:) = drop%ref_mb(:) + drop%dmb_dt(iz,:)*dt
+        CALL compute_dmb_dt                        &
+             (                                     &
+              temp%dz(iz), q%dz(iz), p%dz(iz),     &
+              drop%r(iz,:), drop%rb(iz,:), &
+              drop%dm_dt(iz,:), drop%dmb_dt(iz,:), drop%S(iz)  &
+             ) 
 
-      DO i_m = 1, SIZE(drop%mb(iz,:)) 
-        IF (drop%mb(iz,i_m) < 0.) drop%mb(iz,i_m) = 0
-        IF (i_m == SIZE(drop%mb(iz,:))) EXIT
-        IF (drop%m(iz,i_m) < 0.) drop%m(iz,i_m) = 0
+        drop%m(iz,:)  = drop%ref_m(:)  + drop%dm_dt(iz,:)*substep_dt
+        drop%mb(iz,:) = drop%ref_mb(:) + drop%dmb_dt(iz,:)*substep_dt
+        ! drop%m(iz,:)  = drop%ref_m(:)  + drop%dm_dt(iz,:)*dt
+        ! drop%mb(iz,:) = drop%ref_mb(:) + drop%dmb_dt(iz,:)*dt
+
+        DO i_m = 1, SIZE(drop%mb(iz,:)) 
+          IF (drop%mb(iz,i_m) < 0.) drop%mb(iz,i_m) = 0
+          IF (i_m == SIZE(drop%mb(iz,:))) EXIT
+          IF (drop%m(iz,i_m) < 0.) drop%m(iz,i_m) = 0
+        ENDDO
+
+        CALL compute_redist                            &
+             (                                         &
+              drop%ref_m(:),  drop%m(iz,:),            &
+              drop%ref_mb(:), drop%mb(iz,:),           &
+              drop%dm_dt(iz,:), drop%dmb_dt(iz,:),     &
+              ! dt, drop%dr(:),                          &
+              substep_dt, drop%dr(:),                          &
+              local_nr(:), drop%next_num(iz,:)      &
+              ! drop%num(iz,:), drop%next_num(iz,:)      &
+             )
+        local_nr(:) = drop%next_num(iz,:)
       ENDDO
-
-      CALL compute_redist                            &
-           (                                         &
-            drop%ref_m(:),  drop%m(iz,:),            &
-            drop%ref_mb(:), drop%mb(iz,:),           &
-            drop%dm_dt(iz,:), drop%dmb_dt(iz,:),     &
-            dt, drop%dr(:),                          &
-            drop%num(iz,:), drop%next_num(iz,:)      &
-           )
 
       IF ( phys_feedback ) THEN  ! feedback by phys
         dtotal_m = SUM(drop%next_num(iz,:)*drop%ref_m(:)*drop%dr(:)) - &
@@ -74,7 +89,6 @@ MODULE Mod_phys_driver
       end if
     ! CALL compute_collision
     ENDDO
-     ! write(*,*) drop%dmb_dt(2,:)
 
   END SUBROUTINE Sub_phys_driver
 

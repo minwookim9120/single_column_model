@@ -378,13 +378,13 @@ MODULE Mod_drop_growth
                 ref_m, next_m,    &
                 ref_mb, next_mb,  & 
                 dm_dt, dmb_dt,    & 
-                dt, dr,           &
+                dtt, dr,           &
                 nr, next_nr   &  
                )
 
       IMPLICIT NONE
       ! In
-      REAL,                               INTENT(IN)  :: dt                    
+      REAL,                               INTENT(IN)  :: dtt                    
       REAL, DIMENSION(drop_column_num),   INTENT(IN)  :: ref_m,        & ! const. mass (1st mass) 
                                                          next_m,       & ! after added dm/dt 
                                                          dm_dt,        &
@@ -405,33 +405,31 @@ MODULE Mod_drop_growth
       DO izz = 1, drop_column_num
         dm(izz) = ref_mb(izz+1)-ref_mb(izz)
       ENDDO
-
       local_nr = nr!/(dr*2)  !! local_nr = nr -> nr/dr by han
       SELECT CASE (redist_option)
         CASE (1) ! reassign
           local_nr=local_nr*drop%dr
           CALL reassign(local_nr, ref_m, next_m, next_nr)
           ! CALL redistribution( ref_m, dm_dt, local_nr, next_nr ) 
-
           next_nr=next_nr/drop%dr
         CASE (2) ! PPM
-          WHERE (dmb_dt /= 0.)
-            CFL_substep = courant_number*(dm/abs(dm_dt))
-          ELSEWHERE
-            CFL_substep = MAXVAL(CFL_substep)
-          END WHERE
-          substep_dt = MINVAL(CFL_substep)      ; IF (substep_dt == 0) substep_dt = 1
-          substep_dt = 0.01                      ; IF (substep_dt == 0) substep_dt = 0.01
-          substep_nt = INT(dt/substep_dt)       ; IF (substep_nt == 0) substep_nt = 1
-
+          ! WHERE (dmb_dt /= 0.)
+          !   CFL_substep = courant_number*(dm/abs(dm_dt))
+          ! ELSEWHERE
+          !   CFL_substep = MAXVAL(CFL_substep)
+          ! END WHERE
+          ! substep_dt = MINVAL(CFL_substep)      ; IF (substep_dt == 0) substep_dt = 1
+          ! substep_dt = 0.01                      ; IF (substep_dt == 0) substep_dt = 0.01
+          ! substep_nt = INT(dt/substep_dt)       ; IF (substep_nt == 0) substep_nt = 1
+         
 !           write(*,*) dmb_dt
 !           write(*,*) dm
 ! stop
-          ddmb_dt = dmb_dt
+          ! ddmb_dt = dmb_dt
           ! ddmb_dt(drop_column_num+1) = 0.
-          IF ( dt >= substep_dt ) THEN
-            DO itt = 1, substep_nt
-              CALL Sub_Finite_volume_PPM_forphy ( substep_dt, dmb_dt, dm, local_nr, next_nr )
+          ! IF ( dt >= substep_dt ) THEN
+          !   DO itt = 1, substep_nt
+              CALL Sub_Finite_volume_PPM_forphy ( dtt, dmb_dt, dm, nr, next_nr )
                   ! write(*,*) "dm =", dm
                   ! write(*,*) "dt =", dt
                   ! write(*,*) "drop_column_num =", drop_column_num
@@ -442,18 +440,18 @@ MODULE Mod_drop_growth
               ! !     write(*,*) "next_nr =", next_nr
               !     write(*,*) "next_nr =", sum(next_nr)
               ! stop
-              local_nr=next_nr
-            ENDDO
-          ELSE
-            CALL Sub_Finite_volume_PPM_forphy ( dt, dmb_dt, dm, nr, next_nr )
-                  ! write(*,*) "dm =", dm
-                  ! write(*,*) "dt =", dt
-                  ! write(*,*) "drop_column_num =", drop_column_num
-                  ! write(*,*) "CFL_substep =", CFL_substep*dm_dt/dm
-                  ! write(*,*) "dmb_dt =", dmb_dt
-                  ! write(*,*) "nr =", nr
-                  ! write(*,*) "next_nr =", next_nr
-          ENDIF
+          !     local_nr=next_nr
+          !   ENDDO
+          ! ELSE
+          !   CALL Sub_Finite_volume_PPM_forphy ( dt, dmb_dt, dm, nr, next_nr )
+          !         ! write(*,*) "dm =", dm
+          !         ! write(*,*) "dt =", dt
+          !         ! write(*,*) "drop_column_num =", drop_column_num
+          !         ! write(*,*) "CFL_substep =", CFL_substep*dm_dt/dm
+          !         ! write(*,*) "dmb_dt =", dmb_dt
+          !         ! write(*,*) "nr =", nr
+          !         ! write(*,*) "next_nr =", next_nr
+          ! ENDIF
         CASE DEFAULT
           CALL FAIL_MSG("phys redistribution error")
       END SELECT
